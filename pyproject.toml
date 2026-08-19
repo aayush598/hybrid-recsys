@@ -1,0 +1,98 @@
+[project]
+name = "beautyrec"
+version = "1.0.0"
+description = "Production-grade hybrid recommendation system inspired by Orbo.ai's BeautyGPT"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [{name = "BeautyRec Team"}]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "sqlalchemy>=2.0.25",
+    "aiosqlite>=0.19.0",
+    "redis[hiredis]>=5.0.1",
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+    "python-multipart>=0.0.6",
+    "httpx>=0.26.0",
+    "prometheus-client>=0.19.0",
+    "prometheus-fastapi-instrumentator>=6.1.0",
+    "structlog>=24.1.0",
+    "pyarrow>=14.0.0",
+    "websockets>=12.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch>=2.1.2",
+    "implicit>=0.7.2",
+    "lightgbm>=4.2.0",
+    "faiss-cpu>=1.7.4",
+    "sentence-transformers>=2.3.1",
+    "scikit-learn>=1.4.0",
+    "scipy>=1.12.0",
+    "numpy>=1.26.3",
+    "pandas>=2.1.4",
+    "mlflow>=2.10.0",
+    "optuna>=3.5.0",
+]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.26.0",
+    "ruff>=0.1.14",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "locust>=2.20.0",
+    "bandit>=1.7.6",
+]
+all = ["beautyrec[ml,dev]"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "SIM", "TCH"]
+ignore = ["E501"]
+
+[tool.ruff.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "load: Load tests",
+]
+
+[tool.coverage.run]
+source = ["backend/app"]
+omit = ["*/tests/*", "*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["backend/app", "backend/ml"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

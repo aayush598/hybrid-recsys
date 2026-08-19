@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: beautyrec-backend-pdb
+  namespace: beautyrec
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: beautyrec-backend

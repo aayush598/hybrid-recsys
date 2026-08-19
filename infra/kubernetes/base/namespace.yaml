@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: beautyrec
+  labels:
+    app.kubernetes.io/name: beautyrec
+    app.kubernetes.io/part-of: recommendation-system
