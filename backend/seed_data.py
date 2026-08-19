@@ -29,7 +29,7 @@ async def main():
 
         sample_size = None
         if "--sample" in sys.argv:
-            sample_size = 100000
+            sample_size = 10000
             logger.info(f"Using sample mode: {sample_size} ratings")
 
         stats = await pipeline.run_full_pipeline(sample_size=sample_size)

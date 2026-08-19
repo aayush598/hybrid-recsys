@@ -88,6 +88,7 @@ class CollaborativeFilteringModel:
                     "user_id_map": self.user_id_map,
                     "item_id_map": self.item_id_map,
                     "reverse_item_map": self.reverse_item_map,
+                    "interaction_matrix": self.interaction_matrix,
                 },
                 f,
             )
@@ -169,6 +170,7 @@ class CollaborativeFilteringModel:
             self.user_id_map = data["user_id_map"]
             self.item_id_map = data["item_id_map"]
             self.reverse_item_map = data["reverse_item_map"]
+            self.interaction_matrix = data.get("interaction_matrix")
 
             self.faiss_index = faiss.read_index(str(faiss_path))
             self.user_factors = self.model.user_factors
@@ -235,6 +237,7 @@ class ContentBasedModel:
         faiss.write_index(self.faiss_index, str(model_dir / "content_faiss.index"))
         with open(model_dir / "content_movie_ids.pkl", "wb") as f:
             pickle.dump(self.movie_ids, f)
+        np.save(str(model_dir / "content_feature_matrix.npy"), self.feature_matrix)
 
         logger.info(f"Content index built: {len(self.movie_ids)} movies, dim={dimension}")
 
@@ -302,6 +305,9 @@ class ContentBasedModel:
             self.faiss_index = faiss.read_index(str(faiss_path))
             with open(ids_path, "rb") as f:
                 self.movie_ids = pickle.load(f)
+            matrix_path = settings.MODEL_DIR / "content_feature_matrix.npy"
+            if matrix_path.exists():
+                self.feature_matrix = np.load(str(matrix_path))
             logger.info("Content model loaded from disk")
             return True
         except Exception as e:
@@ -335,7 +341,9 @@ class TrendingModel:
         recent_ratings = result.scalars().all()
 
         if not recent_ratings:
-            return
+            logger.info("No recent ratings found, using all ratings for trending")
+            result = await db.execute(select(Rating))
+            recent_ratings = result.scalars().all()
 
         movie_scores: dict[int, list[float]] = {}
         for r in recent_ratings:

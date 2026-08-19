@@ -20,9 +20,10 @@ build/
 # Data (large files)
 data/raw/
 data/processed/
-data/models/*.pkl
-data/models/*.index
-data/models/*.faiss
+data/models/
+data/evaluation/
+data/beautyrec.db
+*.npy
 *.zip
 
 # Node

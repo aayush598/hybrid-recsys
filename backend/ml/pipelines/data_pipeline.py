@@ -69,21 +69,24 @@ class MovieLensDataPipeline:
             os.remove(zip_path)
 
         movies_df = pd.read_csv(extract_dir / "movies.csv")
-        ratings_df = pd.read_csv(extract_dir / "ratings.csv")
+
+        if sample_size:
+            logger.info(f"Sampling mode: loading {sample_size} ratings from CSV")
+            ratings_df = pd.read_csv(extract_dir / "ratings.csv", nrows=sample_size)
+            movie_ids_in_ratings = set(ratings_df["movieId"].unique())
+        else:
+            ratings_df = pd.read_csv(extract_dir / "ratings.csv")
+
         links_df = pd.read_csv(extract_dir / "links.csv")
+
+        movie_ids_in_ratings = set(ratings_df["movieId"].unique())
+        movies_df = movies_df[movies_df["movieId"].isin(movie_ids_in_ratings)]
+        links_df = links_df[links_df["movieId"].isin(movie_ids_in_ratings)]
 
         tags_path = extract_dir / "tags.csv"
         tags_df = pd.read_csv(tags_path) if tags_path.exists() else None
-
-        if sample_size:
-            logger.info(f"Sampling {sample_size} ratings")
-            sampled_user_ids = ratings_df["userId"].value_counts().head(sample_size // 10).index
-            ratings_df = ratings_df[ratings_df["userId"].isin(sampled_user_ids)]
-            movie_ids_in_ratings = set(ratings_df["movieId"].unique())
-            movies_df = movies_df[movies_df["movieId"].isin(movie_ids_in_ratings)]
-            links_df = links_df[links_df["movieId"].isin(movie_ids_in_ratings)]
-            if tags_df is not None:
-                tags_df = tags_df[tags_df["movieId"].isin(movie_ids_in_ratings)]
+        if tags_df is not None:
+            tags_df = tags_df[tags_df["movieId"].isin(movie_ids_in_ratings)]
 
         return movies_df, ratings_df, links_df, tags_df
 
