@@ -63,6 +63,7 @@ async def run_evaluation():
                     user_id=user_id,
                     num_recommendations=20,
                     algorithm=None,
+                    exclude_seen=False,
                 )
                 all_recommendations[user_id] = [item.movie.id for item in response.recommendations]
             except Exception as e:
