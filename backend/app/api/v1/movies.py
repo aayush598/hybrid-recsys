@@ -4,13 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Movie
+from app.db.models import Movie, MovieTag
 from app.db.session import get_db
 from app.schemas.recommendation import (
     MovieDetail,
     MovieResponse,
     PaginatedResponse,
 )
+from app.services.model_manager import model_manager
 
 router = APIRouter()
 
@@ -58,6 +59,18 @@ async def get_movie(
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
 
+    tag_result = await db.execute(
+        select(MovieTag.tag).where(MovieTag.movie_id == movie_id).limit(20)
+    )
+    tags = list(tag_result.scalars().all())
+
+    try:
+        service = model_manager.get_service()
+        similar_recs = await service.get_similar_items(db, movie_id, top_k=6)
+        similar_movies = [MovieResponse.model_validate(r["movie"]) for r in similar_recs]
+    except Exception:
+        similar_movies = []
+
     return MovieDetail(
         id=movie.id,
         title=movie.title,
@@ -68,7 +81,8 @@ async def get_movie(
         vote_average=movie.vote_average,
         vote_count=movie.vote_count,
         popularity=movie.popularity,
-        tags=[],
+        tags=tags,
+        similar_movies=similar_movies,
     )
 
 

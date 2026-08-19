@@ -126,7 +126,7 @@ class CollaborativeFilteringModel:
         for idx, score in zip(ids, scores):
             movie_id = self.reverse_item_map.get(idx)
             if movie_id is not None:
-                results.append((movie_id, float(score)))
+                results.append((int(movie_id), float(score)))
 
         return results
 
@@ -150,7 +150,7 @@ class CollaborativeFilteringModel:
                 continue
             actual_id = self.reverse_item_map.get(idx)
             if actual_id is not None:
-                results.append((actual_id, float(score)))
+                results.append((int(actual_id), float(score)))
 
         return results[:top_k]
 
@@ -396,6 +396,18 @@ class HybridEnsemble:
             "diversity": 0.10,
         }
 
+    @staticmethod
+    def _normalize_scores(results: list[tuple[int, float]]) -> list[tuple[int, float]]:
+        """Min-max normalize scores to [0, 1] within a result set."""
+        if not results:
+            return results
+        scores = [s for _, s in results]
+        min_s, max_s = min(scores), max(scores)
+        span = max_s - min_s
+        if span == 0:
+            return [(mid, 1.0) for mid, _ in results]
+        return [(mid, (s - min_s) / span) for mid, s in results]
+
     def predict(
         self,
         user_id: str | None = None,
@@ -411,7 +423,8 @@ class HybridEnsemble:
 
         if user_id and self.cf_model.is_loaded:
             cf_results = self.cf_model.predict(user_id, top_k=top_k * 2)
-            for movie_id, score in cf_results:
+            cf_normalized = self._normalize_scores(cf_results)
+            for movie_id, score in cf_normalized:
                 all_candidates.setdefault(movie_id, []).append(
                     (score * self.weights["collaborative"], "collaborative")
                 )
@@ -420,14 +433,16 @@ class HybridEnsemble:
             cb_results = self.content_model.predict_from_history(
                 liked_movies, top_k=top_k * 2
             )
-            for movie_id, score in cb_results:
+            cb_normalized = self._normalize_scores(cb_results)
+            for movie_id, score in cb_normalized:
                 all_candidates.setdefault(movie_id, []).append(
                     (score * self.weights["content_based"], "content_based")
                 )
 
         if self.trending_model.is_loaded:
             trending_results = self.trending_model.predict(top_k=top_k * 2)
-            for movie_id, score in trending_results:
+            tr_normalized = self._normalize_scores(trending_results)
+            for movie_id, score in tr_normalized:
                 all_candidates.setdefault(movie_id, []).append(
                     (score * self.weights["trending"], "trending")
                 )

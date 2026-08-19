@@ -77,7 +77,7 @@ def create_app() -> FastAPI:
     from app.api.v1.users import router as users_router
     from app.api.v1.websocket.realtime import router as ws_router
 
-    app.include_router(health_router, tags=["Health"])
+    app.include_router(health_router, prefix="/api/v1", tags=["Health"])
     app.include_router(rec_router, prefix="/api/v1/recommendations", tags=["Recommendations"])
     app.include_router(movies_router, prefix="/api/v1/movies", tags=["Movies"])
     app.include_router(users_router, prefix="/api/v1/users", tags=["Users"])

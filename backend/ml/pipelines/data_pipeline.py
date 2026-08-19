@@ -84,9 +84,11 @@ class MovieLensDataPipeline:
         links_df = links_df[links_df["movieId"].isin(movie_ids_in_ratings)]
 
         tags_path = extract_dir / "tags.csv"
-        tags_df = pd.read_csv(tags_path) if tags_path.exists() else None
-        if tags_df is not None:
+        if tags_path.exists():
+            tags_df = pd.read_csv(tags_path, nrows=sample_size * 6 if sample_size else None)
             tags_df = tags_df[tags_df["movieId"].isin(movie_ids_in_ratings)]
+        else:
+            tags_df = None
 
         return movies_df, ratings_df, links_df, tags_df
 
