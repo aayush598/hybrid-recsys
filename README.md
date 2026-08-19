@@ -338,7 +338,7 @@ ws.onmessage = (e) => console.log(JSON.parse(e.data));
 - Node.js 18+
 - MovieLens 25M dataset at `/path/to/ml-25m/` (or it will download)
 
-### One-Command Start
+### One-Command Start (Local)
 ```bash
 git clone https://github.com/aayush598/hybrid-recsys.git
 cd hybrid-recsys
@@ -353,6 +353,14 @@ chmod +x start.sh
 ```
 
 Open **http://localhost:3000** in your browser.
+
+### One-Command Start (Docker)
+```bash
+git clone https://github.com/aayush598/hybrid-recsys.git
+cd hybrid-recsys
+docker compose up
+```
+First run downloads MovieLens dataset (~250MB) and trains models (~2min). Subsequent starts are instant.
 
 ### Manual Start
 ```bash
