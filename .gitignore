@@ -18,13 +18,15 @@ build/
 .env.*.local
 
 # Data (large files)
-data/raw/
-data/processed/
-data/models/
-data/evaluation/
-data/beautyrec.db
+backend/data/raw/
+backend/data/processed/
+backend/data/models/
+backend/data/evaluation/
+backend/data/beautyrec.db
 *.npy
 *.zip
+*.pkl
+*.index
 
 # Node
 node_modules/
