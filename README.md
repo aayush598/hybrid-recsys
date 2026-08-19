@@ -333,50 +333,61 @@ ws.onmessage = (e) => console.log(JSON.parse(e.data));
 
 ## Setup & Installation
 
-### Quick Start
+### Prerequisites
+- Python 3.11+ (we use 3.14)
+- Node.js 18+
+- MovieLens 25M dataset at `/path/to/ml-25m/` (or it will download)
+
+### One-Command Start
 ```bash
-git clone https://github.com/yourusername/beautyrec.git
-cd beautyrec
+git clone https://github.com/aayush598/hybrid-recsys.git
+cd hybrid-recsys
 
-# Option 1: Automated setup
-chmod +x infra/scripts/setup.sh
-./infra/scripts/setup.sh setup
-./infra/scripts/setup.sh seed --sample
-./infra/scripts/setup.sh train
-./infra/scripts/setup.sh dev
-
-# Option 2: Docker
-./infra/scripts/setup.sh docker-up
-```
-
-### Manual Setup
-```bash
-# Backend
+# Create venv and install backend deps
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[all]"
-cd backend && python seed_data.py --sample
-uvicorn app.main:app --reload --port 8000
+pip install -r backend/requirements.txt
 
-# Frontend (new terminal)
-cd frontend && npm install && npm run dev
+# Run (seeds data + trains models on first run, ~60s)
+chmod +x start.sh
+./start.sh
 ```
+
+Open **http://localhost:3000** in your browser.
+
+### Manual Start
+```bash
+# Setup
+python -m venv .venv && source .venv/bin/activate
+pip install -r backend/requirements.txt
+cd frontend && npm install && cd ..
+
+# Seed data (100K ratings, ~9K movies)
+cd backend && PYTHONPATH=. python seed_data.py --sample
+
+# Train models (ALS + content index + trending)
+PYTHONPATH=. python evaluate.py
+
+# Start backend
+PYTHONPATH=. python -m uvicorn app.main:app --reload --port 8000
+
+# Start frontend (new terminal)
+cd frontend && npm run dev
+```
+
+### Dataset Setup
+The system expects MovieLens 25M data. Place it at `backend/data/raw/ml-25m/` or symlink:
+```bash
+ln -s /path/to/ml-25m backend/data/raw/ml-25m
+```
+If not found, it will download automatically (~250MB).
 
 ### Access Points
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:3000 |
+| Frontend (UI) | http://localhost:3000 |
 | Backend API | http://localhost:8000 |
-| API Docs (Swagger) | http://localhost:8000/docs |
-| API Docs (ReDoc) | http://localhost:8000/redoc |
-| Grafana Dashboard | http://localhost:3001 |
-| Prometheus | http://localhost:9090 |
-
-### Load Testing
-```bash
-cd backend
-locust -f tests/load/locustfile.py --host=http://localhost:8000
-# Open http://localhost:8089 for Locust UI
-```
+| Swagger API Docs | http://localhost:8000/docs |
+| Health Check | http://localhost:8000/api/v1/health |
 
 ---
 
