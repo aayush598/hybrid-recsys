@@ -8,19 +8,24 @@ import MovieDetailPage from "./pages/MovieDetailPage";
 function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-surface-900">
+      <div className="min-h-screen bg-surface-950">
         <Toaster
-          position="top-right"
+          position="bottom-right"
           toastOptions={{
+            duration: 2500,
             style: {
-              background: "#1e1e1e",
-              color: "#fff",
-              border: "1px solid rgba(255,255,255,0.1)",
+              background: "#18181b",
+              color: "#fafafa",
+              border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "10px",
+              fontSize: "13px",
+              padding: "10px 14px",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
             },
           }}
         />
         <Header />
-        <main className="pt-16">
+        <main className="pt-14">
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/explore" element={<ExplorePage />} />

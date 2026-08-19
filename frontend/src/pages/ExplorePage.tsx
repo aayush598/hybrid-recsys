@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import { movieApi } from "../services/api";
 import MovieCard from "../components/recommendations/MovieCard";
 import { useAppStore } from "../context/useAppStore";
@@ -16,11 +16,14 @@ export default function ExplorePage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [localSearch, setLocalSearch] = useState(searchQuery);
 
   const query = searchParams.get("q") || "";
 
   useEffect(() => {
-    movieApi.getGenres().then((data) => setGenres(data.genres));
+    movieApi.getGenres().then((data) =>
+      setGenres(data.genres.filter((g) => g !== "(no genres listed)"))
+    );
   }, []);
 
   useEffect(() => {
@@ -29,9 +32,18 @@ export default function ExplorePage() {
       try {
         let result;
         if (query) {
-          result = await movieApi.searchMovies(query, page, 24, selectedGenre || undefined);
+          result = await movieApi.searchMovies(
+            query,
+            page,
+            24,
+            selectedGenre || undefined
+          );
         } else {
-          result = await movieApi.listMovies(page, 24, selectedGenre || undefined);
+          result = await movieApi.listMovies(
+            page,
+            24,
+            selectedGenre || undefined
+          );
         }
         setMovies(result.items);
         setTotalPages(result.total_pages);
@@ -47,28 +59,52 @@ export default function ExplorePage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      setSearchParams({ q: searchQuery });
+    setSearchQuery(localSearch);
+    if (localSearch.trim()) {
+      setSearchParams({ q: localSearch });
+    } else {
+      setSearchParams({});
     }
     setPage(1);
   };
 
+  const clearSearch = () => {
+    setLocalSearch("");
+    setSearchQuery("");
+    setSearchParams({});
+    setPage(1);
+  };
+
+  const selectGenre = (genre: string) => {
+    setSelectedGenre(selectedGenre === genre ? "" : genre);
+    setPage(1);
+  };
+
   return (
-    <div className="min-h-screen max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="mb-8">
-        <div className="glass-card p-4 flex items-center gap-3">
-          <Search className="w-5 h-5 text-gray-400" />
+    <div className="min-h-screen max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      {/* Search */}
+      <form onSubmit={handleSearch} className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search movies by title, genre, or keyword..."
-            className="flex-1 bg-transparent text-white placeholder-gray-500 focus:outline-none text-sm"
+            className="input-base pl-12 pr-24 py-3.5 text-base rounded-xl"
           />
+          {localSearch && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="absolute right-24 top-1/2 -translate-y-1/2 p-1 rounded-md text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.06] transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
           <button
             type="submit"
-            className="bg-brand-500 text-white px-6 py-2 rounded-xl text-sm font-medium hover:bg-brand-600 transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 btn-primary py-2 px-4"
           >
             Search
           </button>
@@ -76,31 +112,29 @@ export default function ExplorePage() {
       </form>
 
       {/* Genre Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide">
+        <SlidersHorizontal className="w-4 h-4 text-zinc-500 flex-shrink-0" />
         <button
           onClick={() => {
             setSelectedGenre("");
             setPage(1);
           }}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`flex-shrink-0 px-3 py-1.5 rounded-md text-2xs font-medium transition-all ${
             !selectedGenre
-              ? "bg-brand-500 text-white"
-              : "bg-surface-700 text-gray-300 hover:bg-surface-600 border border-white/5"
+              ? "bg-white/[0.1] text-white border border-white/[0.12]"
+              : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04] border border-transparent"
           }`}
         >
           All
         </button>
-        {genres.slice(0, 15).map((genre) => (
+        {genres.slice(0, 18).map((genre) => (
           <button
             key={genre}
-            onClick={() => {
-              setSelectedGenre(selectedGenre === genre ? "" : genre);
-              setPage(1);
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            onClick={() => selectGenre(genre)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-md text-2xs font-medium transition-all ${
               selectedGenre === genre
-                ? "bg-brand-500 text-white"
-                : "bg-surface-700 text-gray-300 hover:bg-surface-600 border border-white/5"
+                ? "bg-white/[0.1] text-white border border-white/[0.12]"
+                : "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.04] border border-transparent"
             }`}
           >
             {genre}
@@ -108,22 +142,32 @@ export default function ExplorePage() {
         ))}
       </div>
 
-      {/* Results Info */}
-      <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-gray-400">
-          {query ? `Search results for "${query}"` : "All Movies"} — {total.toLocaleString()} results
+      {/* Results Header */}
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-sm text-zinc-500">
+          {query ? (
+            <>
+              Results for{" "}
+              <span className="text-zinc-300 font-medium">"{query}"</span>
+            </>
+          ) : (
+            "All movies"
+          )}
         </p>
+        <span className="text-2xs text-zinc-600 tabular-nums">
+          {total.toLocaleString()} movies
+        </span>
       </div>
 
-      {/* Loading State */}
+      {/* Loading Grid */}
       {loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
           {Array.from({ length: 24 }).map((_, i) => (
-            <div key={i} className="glass-card overflow-hidden animate-pulse">
+            <div key={i} className="surface-card overflow-hidden">
               <div className="aspect-[2/3] shimmer" />
-              <div className="p-3">
-                <div className="h-4 shimmer rounded w-3/4 mb-2" />
-                <div className="h-3 shimmer rounded w-1/2" />
+              <div className="p-3 space-y-2">
+                <div className="h-3.5 shimmer w-3/4 rounded" />
+                <div className="h-3 shimmer w-1/2 rounded" />
               </div>
             </div>
           ))}
@@ -132,7 +176,7 @@ export default function ExplorePage() {
 
       {/* Results Grid */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
           {movies.map((movie, idx) => (
             <MovieCard key={movie.id} movie={movie} index={idx} />
           ))}
@@ -141,32 +185,36 @@ export default function ExplorePage() {
 
       {/* Empty State */}
       {!loading && movies.length === 0 && (
-        <div className="glass-card p-12 text-center">
-          <Search className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">No results found</h3>
-          <p className="text-gray-400">
-            Try adjusting your search or filter criteria.
+        <div className="surface-card p-16 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-surface-750 flex items-center justify-center mx-auto mb-4">
+            <Search className="w-6 h-6 text-zinc-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-white mb-1.5">
+            No results found
+          </h3>
+          <p className="text-sm text-zinc-500">
+            Try a different search term or genre filter.
           </p>
         </div>
       )}
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-8">
+      {totalPages > 1 && !loading && (
+        <div className="flex items-center justify-center gap-2 mt-10">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-surface-700 text-gray-300 hover:bg-surface-600 disabled:opacity-30 disabled:cursor-not-allowed border border-white/5"
+            className="btn-secondary px-4 py-2 text-sm disabled:opacity-30"
           >
             Previous
           </button>
-          <span className="text-sm text-gray-400 px-4">
-            Page {page} of {totalPages}
+          <span className="text-sm text-zinc-500 tabular-nums px-3">
+            {page} / {totalPages.toLocaleString()}
           </span>
           <button
             onClick={() => setPage(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-surface-700 text-gray-300 hover:bg-surface-600 disabled:opacity-30 disabled:cursor-not-allowed border border-white/5"
+            className="btn-secondary px-4 py-2 text-sm disabled:opacity-30"
           >
             Next
           </button>
