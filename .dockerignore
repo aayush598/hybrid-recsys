@@ -1,0 +1,13 @@
+.git
+.venv
+node_modules
+backend/data/raw/ml-25m
+backend/data/models/*.pkl
+backend/data/models/*.index
+backend/data/models/*.npy
+backend/data/evaluation
+backend/data/beautyrec.db
+*.pyc
+__pycache__
+.env
+.DS_Store
