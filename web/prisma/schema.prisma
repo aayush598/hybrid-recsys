@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Movie {
+  id          Int      @id
+  title       String   @db.VarChar(500)
+  genres      String?  @db.VarChar(500)
+  year        Int?
+  overview    String?  @db.Text
+  posterUrl   String?  @map("poster_url") @db.VarChar(1000)
+  voteAverage Float?   @map("vote_average")
+  voteCount   Int?     @map("vote_count")
+  popularity  Float?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  ratings         Rating[]
+  movieTags       MovieTag[]
+  userInteractions UserInteraction[]
+
+  @@map("movies")
+}
+
+model User {
+  id             String   @id @default(uuid()) @db.VarChar(36)
+  username       String   @unique @db.VarChar(100)
+  email          String   @unique @db.VarChar(255)
+  hashedPassword String   @map("hashed_password") @db.VarChar(255)
+  displayName    String?  @map("display_name") @db.VarChar(200)
+  age            Int?
+  gender         String?  @db.VarChar(20)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  ratings          Rating[]
+  interactions     UserInteraction[]
+
+  @@map("users")
+}
+
+model Rating {
+  id        Int      @id @default(autoincrement())
+  userId    String   @map("user_id") @db.VarChar(36)
+  movieId   Int      @map("movie_id")
+  rating    Float
+  timestamp DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  movie Movie @relation(fields: [movieId], references: [id])
+
+  @@index([userId])
+  @@index([movieId])
+  @@unique([userId, movieId])
+  @@map("ratings")
+}
+
+model MovieTag {
+  id        Int    @id @default(autoincrement())
+  movieId   Int    @map("movie_id")
+  tag       String @db.VarChar(200)
+  relevance Float  @default(1.0)
+
+  movie Movie @relation(fields: [movieId], references: [id])
+
+  @@index([movieId])
+  @@map("movie_tags")
+}
+
+model UserInteraction {
+  id              Int      @id @default(autoincrement())
+  userId          String   @map("user_id") @db.VarChar(36)
+  movieId         Int      @map("movie_id")
+  interactionType String   @map("interaction_type") @db.VarChar(50)
+  intensity       Float    @default(1.0)
+  timestamp       DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  movie Movie @relation(fields: [movieId], references: [id])
+
+  @@index([userId])
+  @@index([movieId])
+  @@map("user_interactions")
+}
+
+model RecommendationLog {
+  id                  Int      @id @default(autoincrement())
+  userId              String?  @map("user_id") @db.VarChar(36)
+  sessionId           String?  @map("session_id") @db.VarChar(100)
+  algorithm           String   @db.VarChar(50)
+  recommendedMovieIds String   @map("recommended_movie_ids") @db.Text
+  latencyMs           Float    @map("latency_ms")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("recommendation_logs")
+}

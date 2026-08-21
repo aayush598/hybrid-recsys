@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: beautyrec-backend
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && PYTHONPATH=. python seed_data.py --sample && PYTHONPATH=. python evaluate.py && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: SECRET_KEY
+        generateValue: true
+    healthCheckPath: /api/v1/health
