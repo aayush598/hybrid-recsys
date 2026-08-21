@@ -6,6 +6,7 @@
 
 @layer base {
   html {
+    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -27,11 +28,11 @@
 @layer components {
   .card {
     @apply bg-card border border-border rounded-lg;
-    @apply transition-colors duration-150;
+    @apply transition-all duration-200;
   }
 
   .card-hover {
-    @apply card hover:border-neutral-300;
+    @apply card hover:border-neutral-300 hover:shadow-sm;
   }
 
   .badge {
@@ -113,6 +114,7 @@
 
   .movie-card {
     @apply card-hover cursor-pointer overflow-hidden;
+    @apply hover:-translate-y-0.5 hover:shadow-md;
   }
 
   .movie-poster {
@@ -150,7 +152,33 @@
   }
 
   .skeleton {
-    @apply bg-neutral-100 rounded animate-pulse;
+    @apply bg-neutral-100 rounded;
+    background: linear-gradient(90deg, #f5f5f5 25%, #e5e5e5 50%, #f5f5f5 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  .hero-bg {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, #d4d4d4 1px, transparent 1px);
+    background-size: 32px 32px;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .hero-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,0,0,0.03) 0%, transparent 70%);
+    pointer-events: none;
   }
 }
 
@@ -174,4 +202,79 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes dotGridFade {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 0.4; transform: scale(1); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.6s ease-out forwards;
+}
+
+.animate-slideDown {
+  animation: slideDown 0.5s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.5s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulseSlow {
+  animation: pulseSlow 3s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
 }

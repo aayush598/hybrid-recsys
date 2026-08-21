@@ -42,6 +42,51 @@ const config: Config = {
       borderRadius: {
         "4xl": "2rem",
       },
+      animation: {
+        "fade-in": "fadeIn 0.6s ease-out forwards",
+        "slide-up": "slideUp 0.6s ease-out forwards",
+        "slide-down": "slideDown 0.5s ease-out forwards",
+        "scale-in": "scaleIn 0.5s ease-out forwards",
+        float: "float 3s ease-in-out infinite",
+        "pulse-slow": "pulseSlow 3s ease-in-out infinite",
+        shimmer: "shimmer 1.5s ease-in-out infinite",
+        "gradient-shift": "gradientShift 8s ease infinite",
+      },
+      keyframes: {
+        fadeIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        slideUp: {
+          from: { opacity: "0", transform: "translateY(24px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        slideDown: {
+          from: { opacity: "0", transform: "translateY(-12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        scaleIn: {
+          from: { opacity: "0", transform: "scale(0.95)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-6px)" },
+        },
+        pulseSlow: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+        gradientShift: {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
+      },
     },
   },
   plugins: [],

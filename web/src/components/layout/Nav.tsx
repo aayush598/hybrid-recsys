@@ -15,10 +15,15 @@ export default function Nav() {
   const pathname = usePathname();
   const [currentUser, setCurrentUser] = useState("user-1");
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("hybrid-recsys-user");
     if (saved) setCurrentUser(saved);
+
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const switchUser = (userId: string) => {
@@ -36,12 +41,18 @@ export default function Nav() {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-border">
+    <nav
+      className={`sticky top-0 z-50 transition-all duration-200 ${
+        scrolled
+          ? "bg-white/90 backdrop-blur-xl border-b border-border shadow-sm"
+          : "bg-white/70 backdrop-blur-lg border-b border-border"
+      }`}
+    >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
                 <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
                 </svg>
@@ -49,14 +60,14 @@ export default function Nav() {
               <span className="text-sm font-semibold text-primary">RecSys</span>
             </Link>
 
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-0.5">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150 ${
                       isActive
                         ? "text-primary bg-neutral-100"
                         : "text-secondary hover:text-primary hover:bg-neutral-50"
@@ -73,7 +84,7 @@ export default function Nav() {
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm text-secondary hover:border-neutral-300 hover:text-primary transition-all bg-white"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm text-secondary hover:border-neutral-300 hover:text-primary transition-all duration-150 bg-white hover:shadow-sm"
               >
                 <div className="w-5 h-5 rounded-full bg-neutral-200 flex items-center justify-center">
                   <svg className="w-3 h-3 text-secondary" fill="currentColor" viewBox="0 0 24 24">
@@ -81,7 +92,7 @@ export default function Nav() {
                   </svg>
                 </div>
                 <span className="hidden sm:inline">{currentUser}</span>
-                <svg className={`w-3.5 h-3.5 text-muted transition-transform ${showUserMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className={`w-3.5 h-3.5 text-muted transition-transform duration-200 ${showUserMenu ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -89,7 +100,7 @@ export default function Nav() {
               {showUserMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden">
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-scaleIn">
                     <div className="px-3 py-2 border-b border-border">
                       <p className="text-xs font-medium text-muted uppercase tracking-wider">Switch User</p>
                     </div>
@@ -97,13 +108,13 @@ export default function Nav() {
                       <button
                         key={user.id}
                         onClick={() => switchUser(user.id)}
-                        className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors ${
+                        className={`w-full text-left px-3 py-2.5 text-sm flex items-center gap-2 transition-colors duration-150 ${
                           currentUser === user.id
                             ? "bg-neutral-100 text-primary font-medium"
                             : "text-secondary hover:bg-neutral-50"
                         }`}
                       >
-                        <div className={`w-2 h-2 rounded-full ${currentUser === user.id ? "bg-primary" : "bg-neutral-300"}`} />
+                        <div className={`w-2 h-2 rounded-full transition-colors ${currentUser === user.id ? "bg-primary" : "bg-neutral-300"}`} />
                         {user.label}
                       </button>
                     ))}
