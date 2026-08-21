@@ -101,6 +101,74 @@ class RecommendationEvaluator:
         """Hit Rate@K: 1 if any relevant item is in top-K, else 0."""
         return 1.0 if len(set(recommended[:k]) & relevant) > 0 else 0.0
 
+    def mrr_at_k(
+        self, recommended: list[int], relevant: set[int], k: int
+    ) -> float:
+        """Mean Reciprocal Rank@K: 1/rank of first relevant item in top-K."""
+        for i, item in enumerate(recommended[:k]):
+            if item in relevant:
+                return 1.0 / (i + 1)
+        return 0.0
+
+    def auc_roc(
+        self, recommended: list[int], relevant: set[int], all_items: set[int]
+    ) -> float:
+        """AUC-ROC: probability that a relevant item is ranked higher than a non-relevant item."""
+        if not relevant or len(all_items) <= len(relevant):
+            return 0.5
+
+        recommended_set = set(recommended)
+        non_relevant = all_items - relevant
+
+        if not non_relevant:
+            return 0.5
+
+        # Compute AUC using rank-based method
+        relevant_in_rec = len(recommended_set & relevant)
+        non_relevant_in_rec = len(recommended_set & non_relevant)
+
+        if relevant_in_rec == 0:
+            return 0.0
+
+        # Approximate: fraction of relevant items ranked above non-relevant
+        n_relevant = len(relevant)
+        n_non_relevant = len(non_relevant)
+
+        # Simplified AUC computation
+        auc = (relevant_in_rec * n_non_relevant + (n_relevant - relevant_in_rec) * n_non_relevant / 2)
+        auc /= (n_relevant * n_non_relevant) if (n_relevant * n_non_relevant) > 0 else 1
+
+        return min(max(auc, 0.0), 1.0)
+
+    def gini_coefficient(
+        self, all_recommendations: list[list[int]], total_items: int
+    ) -> float:
+        """Gini coefficient: measures inequality in recommendation distribution.
+
+        0 = perfect equality (all items recommended equally)
+        1 = perfect inequality (only popular items recommended)
+        """
+        if not all_recommendations or total_items == 0:
+            return 0.0
+
+        item_counts = [0] * total_items
+        for recs in all_recommendations:
+            for item_id in recs:
+                if 0 <= item_id < total_items:
+                    item_counts[item_id] += 1
+
+        sorted_counts = sorted(item_counts)
+        n = len(sorted_counts)
+        cumulative = 0.0
+        for i, count in enumerate(sorted_counts):
+            cumulative += (2 * (i + 1) - n - 1) * count
+
+        total = sum(sorted_counts)
+        if total == 0:
+            return 0.0
+
+        return cumulative / (n * total)
+
     def coverage(
         self, all_recommendations: list[list[int]], total_items: int
     ) -> float:
@@ -169,9 +237,11 @@ class RecommendationEvaluator:
             "ndcg_at_k": {},
             "map_at_k": {},
             "hit_rate_at_k": {},
+            "mrr_at_k": {},
         }
 
         all_recs = []
+        all_items = set(self.movies_df["movie_id"].tolist())
 
         for user_id in test_users:
             user_ratings = self.ratings_df[self.ratings_df["user_id"] == user_id]
@@ -187,6 +257,7 @@ class RecommendationEvaluator:
                 metrics["ndcg_at_k"][f"k={k}"] = metrics["ndcg_at_k"].get(f"k={k}", [])
                 metrics["map_at_k"][f"k={k}"] = metrics["map_at_k"].get(f"k={k}", [])
                 metrics["hit_rate_at_k"][f"k={k}"] = metrics["hit_rate_at_k"].get(f"k={k}", [])
+                metrics["mrr_at_k"][f"k={k}"] = metrics["mrr_at_k"].get(f"k={k}", [])
 
                 metrics["precision_at_k"][f"k={k}"].append(
                     self.precision_at_k(recommended, high_rated, k)
@@ -203,6 +274,9 @@ class RecommendationEvaluator:
                 metrics["hit_rate_at_k"][f"k={k}"].append(
                     self.hit_rate_at_k(recommended, high_rated, k)
                 )
+                metrics["mrr_at_k"][f"k={k}"].append(
+                    self.mrr_at_k(recommended, high_rated, k)
+                )
 
         averaged_metrics = {}
         for metric_name, k_scores in metrics.items():
@@ -212,6 +286,9 @@ class RecommendationEvaluator:
 
         total_items = len(self.movies_df)
         averaged_metrics["coverage"] = round(self.coverage(all_recs, total_items), 4)
+        averaged_metrics["gini_coefficient"] = round(
+            self.gini_coefficient(all_recs, total_items), 4
+        )
 
         sample_recs = all_recs[:100]
         averaged_metrics["diversity"] = round(
@@ -223,5 +300,16 @@ class RecommendationEvaluator:
 
         averaged_metrics["test_users"] = len(test_users)
         averaged_metrics["total_items"] = total_items
+
+        # Compute AUC-ROC for k=20
+        auc_scores = []
+        for user_id in test_users[:100]:  # Sample for efficiency
+            user_ratings = self.ratings_df[self.ratings_df["user_id"] == user_id]
+            high_rated = set(user_ratings[user_ratings["rating"] >= 3.5]["movie_id"].tolist())
+            recommended = recommendations.get(user_id, [])
+            if high_rated and recommended:
+                auc = self.auc_roc(recommended, high_rated, all_items)
+                auc_scores.append(auc)
+        averaged_metrics["auc_roc"] = round(float(np.mean(auc_scores)), 4) if auc_scores else 0.5
 
         return averaged_metrics

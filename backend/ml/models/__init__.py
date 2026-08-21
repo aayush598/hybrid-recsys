@@ -22,6 +22,22 @@ def __getattr__(name: str):
         from ml.models.ltr_ranker import LearningToRankModel
         return LearningToRankModel
 
+    if name == "BPRModel":
+        from ml.models.bpr import BPRModel
+        return BPRModel
+
+    if name == "SVDCollaborativeFiltering":
+        from ml.models.svd import SVDCollaborativeFiltering
+        return SVDCollaborativeFiltering
+
+    if name in ("SessionRecommender", "get_session_recommender"):
+        from ml.models.session_based import SessionRecommender, get_session_recommender
+        return {"SessionRecommender": SessionRecommender, "get_session_recommender": get_session_recommender}[name]
+
+    if name in ("RecommendationBandit", "get_recommendation_bandit"):
+        from ml.models.mab import RecommendationBandit, get_recommendation_bandit
+        return {"RecommendationBandit": RecommendationBandit, "get_recommendation_bandit": get_recommendation_bandit}[name]
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -35,4 +51,8 @@ __all__ = [
     "TwoTowerModel",
     "TwoTowerIndex",
     "LearningToRankModel",
+    "BPRModel",
+    "SVDCollaborativeFiltering",
+    "SessionRecommender",
+    "RecommendationBandit",
 ]

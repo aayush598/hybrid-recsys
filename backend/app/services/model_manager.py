@@ -45,6 +45,13 @@ class ModelManager:
             "content_based": service.content_model.is_loaded,
             "trending": service.trending_model.is_loaded,
             "hybrid_ensemble": service.hybrid.is_loaded,
+            "ltr_ranker": service._ltr_model.is_trained if service._ltr_model else False,
+            "multi_level_cache": service._multi_level_cache is not None,
+            "feature_store": service._feature_store is not None,
+            "session_recommender": service._session_recommender is not None,
+            "bandit": service._bandit is not None,
+            "streaming_pipeline": service._streaming_pipeline is not None,
+            "model_monitor": service._model_monitor is not None,
         }
 
 

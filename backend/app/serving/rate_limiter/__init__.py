@@ -103,8 +103,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app, requests_per_minute: int = 60, burst_size: int = 10):
         super().__init__(app)
         self.limiter = SlidingWindowRateLimiter(requests_per_minute, 60)
-        self.burst_limiters: dict[str, TokenBucket] = {}
         self.burst_size = burst_size
+        self.burst_limiters: dict[str, TokenBucket] = {}
 
     def _get_client_key(self, request: Request) -> str:
         """Extract client identifier for rate limiting."""
@@ -112,6 +112,17 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if forwarded:
             return forwarded.split(",")[0].strip()
         return request.client.host if request.client else "unknown"
+
+    def _get_burst_limiter(self, key: str) -> TokenBucket:
+        """Get or create a token bucket for burst limiting."""
+        if key not in self.burst_limiters:
+            self.burst_limiters[key] = TokenBucket(
+                capacity=self.burst_size,
+                refill_rate=self.burst_size / 10.0,  # Refill burst_size tokens over 10 seconds
+                tokens=float(self.burst_size),
+                last_refill=time.time(),
+            )
+        return self.burst_limiters[key]
 
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
@@ -121,6 +132,23 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         client_key = self._get_client_key(request)
 
+        # Check burst limit first (token bucket)
+        burst_limiter = self._get_burst_limiter(client_key)
+        if not burst_limiter.consume():
+            retry_after = burst_limiter.retry_after
+            logger.warning(f"Burst limit exceeded for {client_key}")
+            return Response(
+                content='{"detail":"Burst limit exceeded. Please slow down."}',
+                status_code=429,
+                headers={
+                    "Content-Type": "application/json",
+                    "X-RateLimit-Limit": str(self.burst_size),
+                    "X-RateLimit-Remaining": str(int(burst_limiter.tokens)),
+                    "Retry-After": str(int(retry_after) + 1),
+                },
+            )
+
+        # Check sliding window limit
         allowed, info = self.limiter.is_allowed(client_key)
 
         if not allowed:

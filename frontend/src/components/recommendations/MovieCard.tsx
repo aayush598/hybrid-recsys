@@ -47,8 +47,10 @@ export default function MovieCard({
     <div
       className="group animate-fade-in"
       style={{ animationDelay: `${index * 40}ms`, animationFillMode: "both" }}
+      role="article"
+      aria-label={`${movie.title}${score !== undefined ? ` - ${(score * 100).toFixed(0)}% match` : ""}`}
     >
-      <Link to={`/movie/${movie.id}`} className="block">
+      <Link to={`/movie/${movie.id}`} className="block" aria-label={`View ${movie.title}`}>
         <div className="surface-card-hover overflow-hidden">
           {/* Poster */}
           <div className={`relative aspect-[2/3] bg-gradient-to-br ${palette.bg} overflow-hidden`}>

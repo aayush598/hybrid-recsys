@@ -77,6 +77,18 @@ export const recommendationApi = {
     const { data } = await api.get("/recommendations/debug/model-status");
     return data;
   },
+
+  rateMovie: async (
+    userId: string,
+    movieId: number,
+    rating: number
+  ) => {
+    const { data } = await api.post(`/recommendations/user/${userId}/rate`, {
+      movie_id: movieId,
+      rating,
+    });
+    return data;
+  },
 };
 
 export const movieApi = {
@@ -114,6 +126,23 @@ export const movieApi = {
 
   getGenres: async (): Promise<{ genres: string[] }> => {
     const { data } = await api.get("/movies/genres/list");
+    return data;
+  },
+};
+
+export const userApi = {
+  createUser: async (userData: {
+    username: string;
+    email: string;
+    password: string;
+    display_name?: string;
+  }) => {
+    const { data } = await api.post("/users/", userData);
+    return data;
+  },
+
+  getUser: async (userId: string) => {
+    const { data } = await api.get(`/users/${userId}`);
     return data;
   },
 };

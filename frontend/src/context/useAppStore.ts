@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Algorithm, Movie, RecommendationItem } from "../types";
+import type { Algorithm, RecommendationItem } from "../types";
 
 interface AppState {
   userId: string | null;
@@ -8,9 +8,6 @@ interface AppState {
   recommendations: RecommendationItem[];
   isLoadingRecommendations: boolean;
   searchQuery: string;
-  searchResults: Movie[];
-  selectedMovie: Movie | null;
-  userRatings: Map<number, number>;
   latency: number | null;
 
   setUserId: (id: string | null) => void;
@@ -18,9 +15,6 @@ interface AppState {
   setRecommendations: (recs: RecommendationItem[]) => void;
   setIsLoading: (loading: boolean) => void;
   setSearchQuery: (query: string) => void;
-  setSearchResults: (results: Movie[]) => void;
-  setSelectedMovie: (movie: Movie | null) => void;
-  rateMovie: (movieId: number, rating: number) => void;
   setLatency: (ms: number) => void;
 }
 
@@ -33,9 +27,6 @@ export const useAppStore = create<AppState>((set) => ({
   recommendations: [],
   isLoadingRecommendations: false,
   searchQuery: "",
-  searchResults: [],
-  selectedMovie: null,
-  userRatings: new Map(),
   latency: null,
 
   setUserId: (id) => set({ userId: id }),
@@ -43,13 +34,5 @@ export const useAppStore = create<AppState>((set) => ({
   setRecommendations: (recs) => set({ recommendations: recs }),
   setIsLoading: (loading) => set({ isLoadingRecommendations: loading }),
   setSearchQuery: (query) => set({ searchQuery: query }),
-  setSearchResults: (results) => set({ searchResults: results }),
-  setSelectedMovie: (movie) => set({ selectedMovie: movie }),
-  rateMovie: (movieId, rating) =>
-    set((state) => {
-      const newRatings = new Map(state.userRatings);
-      newRatings.set(movieId, rating);
-      return { userRatings: newRatings };
-    }),
   setLatency: (ms) => set({ latency: ms }),
 }));

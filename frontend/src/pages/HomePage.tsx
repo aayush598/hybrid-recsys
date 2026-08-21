@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Sparkles,
   Zap,
@@ -8,6 +9,7 @@ import {
   Users,
   AlertCircle,
   ChevronDown,
+  ArrowRight,
 } from "lucide-react";
 import { recommendationApi } from "../services/api";
 import { useAppStore } from "../context/useAppStore";
@@ -89,6 +91,7 @@ export default function HomePage() {
 
   useEffect(() => {
     fetchRecommendations();
+    window.scrollTo(0, 0);
   }, [selectedAlgorithm]);
 
   return (
@@ -152,6 +155,7 @@ export default function HomePage() {
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
+                    <option value={100}>100</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                 </div>
@@ -280,6 +284,38 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Quick Links */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl mx-auto">
+          <Link
+            to="/trending"
+            className="surface-card p-4 flex items-center gap-3 hover:bg-white/[0.04] transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-white">Trending Now</h3>
+              <p className="text-2xs text-zinc-500">See what&apos;s popular</p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+          </Link>
+          <Link
+            to="/explore"
+            className="surface-card p-4 flex items-center gap-3 hover:bg-white/[0.04] transition-colors group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <BarChart3 className="w-5 h-5 text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-white">Explore Library</h3>
+              <p className="text-2xs text-zinc-500">Browse all movies</p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+          </Link>
+        </div>
+      </section>
 
       {/* Empty State */}
       {!isLoadingRecommendations && recommendations.length === 0 && !error && (

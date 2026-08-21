@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +10,9 @@ from app.core.config import get_settings
 from app.db.models import Movie
 from app.db.session import get_db
 from app.schemas.recommendation import (
+    InteractionCreate,
     MovieResponse,
+    RatingCreate,
     RecommendationRequest,
     RecommendationResponse,
     TrendingResponse,
@@ -59,17 +63,17 @@ async def get_similar_movies(
 
 @router.post("/interact")
 async def record_interaction(
-    interaction: dict,
+    interaction: InteractionCreate,
     db: AsyncSession = Depends(get_db),
 ):
     """Record a user interaction (view, like, bookmark, etc.)."""
     service = model_manager.get_service()
     await service.record_interaction(
         db=db,
-        user_id=interaction["user_id"],
-        movie_id=interaction["movie_id"],
-        interaction_type=interaction["interaction_type"],
-        intensity=interaction.get("intensity", 1.0),
+        user_id="anonymous",
+        movie_id=interaction.movie_id,
+        interaction_type=interaction.interaction_type,
+        intensity=interaction.intensity,
     )
     return {"status": "recorded"}
 
@@ -83,6 +87,23 @@ async def get_user_profile(
     service = model_manager.get_service()
     profile = await service.get_user_profile(db, user_id)
     return profile
+
+
+@router.post("/user/{user_id}/rate")
+async def rate_movie(
+    user_id: str,
+    rating_data: RatingCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    """Rate a movie (updates recommendation system)."""
+    service = model_manager.get_service()
+    await service.record_rating(
+        db=db,
+        user_id=user_id,
+        movie_id=rating_data.movie_id,
+        rating=rating_data.rating,
+    )
+    return {"status": "rated", "movie_id": rating_data.movie_id, "rating": rating_data.rating}
 
 
 @router.get("/trending", response_model=TrendingResponse)
@@ -101,8 +122,6 @@ async def get_trending(
         if movie:
             movies.append(MovieResponse.model_validate(movie))
 
-    from datetime import datetime
-
     return TrendingResponse(
         trending=movies,
         period=period,
@@ -111,15 +130,8 @@ async def get_trending(
 
 
 @router.get("/debug/model-status")
-async def model_status():
-    """Debug endpoint showing model loading status."""
-    health = model_manager.health_check()
-    return {
-        "models": health,
-        "all_loaded": all(health.values()),
-        "config": {
-            "candidate_pool_size": settings.CANDIDATE_POOL_SIZE,
-            "ranking_top_k": settings.RANKING_TOP_K,
-            "embedding_model": settings.EMBEDDING_MODEL,
-        },
-    }
+async def model_status(db: AsyncSession = Depends(get_db)):
+    """Debug endpoint showing model and infrastructure status."""
+    service = model_manager.get_service()
+    status = await service.get_debug_status(db)
+    return status

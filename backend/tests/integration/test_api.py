@@ -21,7 +21,7 @@ async def client():
 @pytest.mark.integration
 class TestHealthEndpoint:
     async def test_health_check(self, client: AsyncClient):
-        response = await client.get("/health")
+        response = await client.get("/api/v1/health")
         assert response.status_code == 200
         data = response.json()
         assert "status" in data
@@ -88,6 +88,7 @@ class TestRecommendationAPI:
         data = response.json()
         assert "models" in data
         assert "config" in data
+        assert "infrastructure" in data
 
 
 @pytest.mark.integration

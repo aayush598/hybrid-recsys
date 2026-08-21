@@ -16,15 +16,26 @@ export default function ExplorePage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [localSearch, setLocalSearch] = useState(searchQuery);
-
   const query = searchParams.get("q") || "";
+  const [localSearch, setLocalSearch] = useState(query || searchQuery);
+
+  useEffect(() => {
+    setLocalSearch(query || searchQuery);
+  }, [query]);
 
   useEffect(() => {
     movieApi.getGenres().then((data) =>
       setGenres(data.genres.filter((g) => g !== "(no genres listed)"))
     );
   }, []);
+
+  useEffect(() => {
+    const genreParam = searchParams.get("genre") || "";
+    if (genreParam && genreParam !== selectedGenre) {
+      setSelectedGenre(genreParam);
+    }
+    window.scrollTo(0, 0);
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchData = async () => {

@@ -277,3 +277,150 @@ class TestEvaluationMetrics:
         coverage = evaluator.coverage(all_recs, total_items=5)
         assert 0.0 <= coverage <= 1.0
         assert coverage == 4 / 5
+
+    def test_gini_coefficient_equal(self):
+        from ml.evaluation.metrics import RecommendationEvaluator
+
+        evaluator = RecommendationEvaluator.__new__(RecommendationEvaluator)
+        # Equal distribution: each of 4 items recommended once (0-indexed)
+        all_recs = [[0], [1], [2], [3]]
+        gini = evaluator.gini_coefficient(all_recs, total_items=4)
+        assert gini == 0.0  # Perfect equality: each item count is 1
+
+    def test_gini_coefficient_unequal(self):
+        from ml.evaluation.metrics import RecommendationEvaluator
+
+        evaluator = RecommendationEvaluator.__new__(RecommendationEvaluator)
+        # Unequal: item 0 recommended 5 times, others 1 each
+        all_recs = [[0, 0, 0, 0, 0], [1], [2], [3]]
+        gini = evaluator.gini_coefficient(all_recs, total_items=4)
+        assert gini > 0.0  # Some inequality
+
+    def test_mrr_at_k(self):
+        from ml.evaluation.metrics import RecommendationEvaluator
+
+        evaluator = RecommendationEvaluator.__new__(RecommendationEvaluator)
+        recs = [1, 2, 3, 4, 5]
+        relevant = {3}
+
+        mrr = evaluator.mrr_at_k(recs, relevant, k=5)
+        assert mrr == 1 / 3  # Position 3 (1-indexed)
+
+    def test_mrr_first_item_relevant(self):
+        from ml.evaluation.metrics import RecommendationEvaluator
+
+        evaluator = RecommendationEvaluator.__new__(RecommendationEvaluator)
+        recs = [1, 2, 3]
+        relevant = {1}
+        mrr = evaluator.mrr_at_k(recs, relevant, k=3)
+        assert mrr == 1.0
+
+    def test_mrr_no_relevant(self):
+        from ml.evaluation.metrics import RecommendationEvaluator
+
+        evaluator = RecommendationEvaluator.__new__(RecommendationEvaluator)
+        recs = [1, 2, 3]
+        relevant = {99}
+        mrr = evaluator.mrr_at_k(recs, relevant, k=3)
+        assert mrr == 0.0
+
+
+class TestBPRModel:
+    """Unit tests for BPR-MF model."""
+
+    def test_initialization(self):
+        from ml.models.bpr import BPRModel
+
+        model = BPRModel()
+        assert model is not None
+
+    def test_predict_before_training(self):
+        from ml.models.bpr import BPRModel
+
+        model = BPRModel()
+        scores = model.predict(user_id=0, top_k=3)
+        assert scores == []
+
+    def test_similar_items_before_training(self):
+        from ml.models.bpr import BPRModel
+
+        model = BPRModel()
+        result = model.similar_items(movie_id="0", top_k=3)
+        assert result == []
+
+
+class TestSVDCollaborativeFiltering:
+    """Unit tests for SVD-based CF model."""
+
+    def test_initialization(self):
+        from ml.models.svd import SVDCollaborativeFiltering
+
+        model = SVDCollaborativeFiltering()
+        assert model is not None
+
+    def test_predict_before_training(self):
+        from ml.models.svd import SVDCollaborativeFiltering
+
+        model = SVDCollaborativeFiltering()
+        scores = model.predict(user_id=0, top_k=3)
+        assert scores == []
+
+    def test_similar_items_before_training(self):
+        from ml.models.svd import SVDCollaborativeFiltering
+
+        model = SVDCollaborativeFiltering()
+        result = model.similar_items(movie_id="0", top_k=3)
+        assert result == []
+
+
+class TestMultiLevelCache:
+    """Unit tests for multi-level cache."""
+
+    def test_set_and_get(self):
+        from app.serving.cache.multi_level import MultiLevelCache
+
+        cache = MultiLevelCache()
+        cache.set("key1", {"data": "test"})
+        result = cache.get("key1")
+        assert result == {"data": "test"}
+
+    def test_miss(self):
+        from app.serving.cache.multi_level import MultiLevelCache
+
+        cache = MultiLevelCache()
+        result = cache.get("nonexistent")
+        assert result is None
+
+
+class TestStreamingPipeline:
+    """Unit tests for streaming pipeline."""
+
+    def test_event_creation(self):
+        from app.serving.streaming.pipeline import StreamEvent
+
+        event = StreamEvent(
+            event_type="view",
+            data={"user_id": "user_1", "item_id": 42, "source": "home"},
+        )
+        assert event.event_type == "view"
+        assert event.data["user_id"] == "user_1"
+
+
+class TestModelMonitor:
+    """Unit tests for model monitor."""
+
+    def test_initialization(self):
+        from app.core.monitoring import ModelMonitor
+
+        monitor = ModelMonitor()
+        assert monitor is not None
+
+    def test_record_prediction(self):
+        from app.core.monitoring import ModelMonitor
+
+        monitor = ModelMonitor()
+        monitor.record_prediction(0.85, {"algorithm": "cf"})
+        monitor.record_prediction(0.72, {"algorithm": "cf"})
+        # record_prediction updates internal detectors; check_all returns alerts
+        alerts = monitor.check_all()
+        assert isinstance(alerts, list)

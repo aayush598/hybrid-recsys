@@ -56,3 +56,20 @@ export interface UserProfile {
 }
 
 export type Algorithm = "hybrid" | "collaborative" | "content_based" | "trending" | "similar";
+
+export interface TrendingResponse {
+  trending: Movie[];
+  period: string;
+  generated_at: string;
+}
+
+export interface DebugStatus {
+  models: Record<string, boolean>;
+  infrastructure: Record<string, boolean>;
+  config: Record<string, any>;
+  cache_stats?: Record<string, any>;
+  feature_store_stats?: Record<string, any>;
+  bandit_stats?: Record<string, any>;
+  streaming_stats?: Record<string, any>;
+  monitoring_report?: Record<string, any>;
+}

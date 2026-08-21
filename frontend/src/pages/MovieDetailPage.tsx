@@ -19,22 +19,30 @@ export default function MovieDetailPage() {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [similar, setSimilar] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [similarLoading, setSimilarLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     const fetchData = async () => {
       setLoading(true);
+      setSimilarLoading(true);
       try {
-        const [movieData, similarData] = await Promise.all([
-          movieApi.getMovie(Number(id)),
-          recommendationApi.getSimilarMovies(Number(id), 12),
-        ]);
+        const movieData = await movieApi.getMovie(Number(id));
         setMovie(movieData);
-        setSimilar(similarData.similar);
       } catch (err) {
         console.error("Failed to fetch movie:", err);
       } finally {
         setLoading(false);
+      }
+
+      try {
+        const similarData = await recommendationApi.getSimilarMovies(Number(id), 12);
+        setSimilar(similarData.similar);
+      } catch (err) {
+        console.error("Failed to fetch similar movies:", err);
+        setSimilar([]);
+      } finally {
+        setSimilarLoading(false);
       }
     };
     fetchData();
@@ -68,14 +76,20 @@ export default function MovieDetailPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="surface-card p-10 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-surface-750 flex items-center justify-center mx-auto mb-4">
+            <Play className="w-6 h-6 text-zinc-600" />
+          </div>
           <h2 className="text-lg font-semibold text-white mb-2">
             Movie not found
           </h2>
+          <p className="text-sm text-zinc-500 mb-4">
+            The movie you&apos;re looking for doesn&apos;t exist or has been removed.
+          </p>
           <Link
-            to="/"
-            className="text-sm text-brand-400 hover:text-brand-300 transition-colors"
+            to="/explore"
+            className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-sm"
           >
-            Go back home
+            Browse movies
           </Link>
         </div>
       </div>
@@ -86,13 +100,13 @@ export default function MovieDetailPage() {
     <div className="min-h-screen">
       {/* Back */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
-        <Link
-          to="/"
+        <button
+          onClick={() => window.history.back()}
           className="inline-flex items-center gap-1.5 text-sm text-zinc-500 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back
-        </Link>
+        </button>
       </div>
 
       {/* Movie Info */}
@@ -158,9 +172,13 @@ export default function MovieDetailPage() {
             {movie.genres && (
               <div className="flex flex-wrap gap-1.5 mb-5">
                 {movie.genres.split("|").map((genre) => (
-                  <span key={genre} className="badge">
+                  <Link
+                    key={genre}
+                    to={`/explore?genre=${encodeURIComponent(genre)}`}
+                    className="badge hover:bg-white/[0.12] transition-colors cursor-pointer"
+                  >
                     {genre}
-                  </span>
+                  </Link>
                 ))}
               </div>
             )}
@@ -220,7 +238,23 @@ export default function MovieDetailPage() {
       </div>
 
       {/* Similar Movies */}
-      {similar.length > 0 && (
+      {similarLoading ? (
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
+          <div className="divider mb-6" />
+          <h2 className="section-title mb-5">Similar movies</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="surface-card overflow-hidden">
+                <div className="aspect-[2/3] shimmer" />
+                <div className="p-3 space-y-2">
+                  <div className="h-3.5 shimmer w-3/4 rounded" />
+                  <div className="h-3 shimmer w-1/2 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : similar.length > 0 ? (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-20">
           <div className="divider mb-6" />
           <div className="flex items-center justify-between mb-5">
@@ -244,7 +278,7 @@ export default function MovieDetailPage() {
             ))}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }
