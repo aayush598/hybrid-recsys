@@ -1,0 +1,115 @@
+# Default values for the beautyrec Helm chart.
+
+global:
+  environment: production
+  imagePullPolicy: IfNotPresent
+  namespace: beautyrec
+
+serviceAccount:
+  create: true
+  name: ""
+
+backend:
+  replicaCount: 2
+  port: 8000
+  image:
+    repository: ghcr.io/orbo/beautyrec-backend
+    tag: "" # defaults to Chart AppVersion
+  env:
+    APP_ENV: production
+    LOG_LEVEL: INFO
+    WORKERS: "4"
+    REDIS_URL: redis://beautyrec-redis:6379/0
+    CORS_ORIGINS: https://beautyrec.example.com
+  existingSecret: beautyrec-secrets
+  secretKeys:
+    databaseUrl: database-url
+    apiKey: api-key
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8000"
+    prometheus.io/path: /metrics
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - backend
+            topologyKey: kubernetes.io/hostname
+
+frontend:
+  replicaCount: 2
+  port: 80
+  image:
+    repository: ghcr.io/orbo/beautyrec-frontend
+    tag: "" # defaults to Chart AppVersion
+  env:
+    VITE_API_BASE_URL: https://beautyrec.example.com/api/v1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+ingress:
+  enabled: true
+  className: nginx
+  host: beautyrec.example.com
+  annotations:
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+    nginx.ingress.kubernetes.io/limit-connections: "50"
+    nginx.ingress.kubernetes.io/proxy-body-size: 8m
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  tls:
+    enabled: true
+    secretName: beautyrec-tls
+
+redis:
+  # Redis is provisioned externally (ElastiCache) via Terraform.
+  external: true
+  host: beautyrec-redis.cache.amazonaws.com
+  port: 6379
+  internal:
+    image: redis:7-alpine
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+postgresql:
+  external: true
+  host: ""
+  port: 5432
+  database: beautyrec
+  existingSecret: beautyrec-secrets

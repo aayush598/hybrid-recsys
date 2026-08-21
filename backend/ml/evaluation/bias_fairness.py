@@ -1,424 +1,212 @@
-"""Bias and Fairness Evaluation Metrics.
+"""Bias and fairness detection for recommender systems.
 
-Implements metrics for detecting and measuring bias in recommendations,
-including popularity bias, fairness across user groups, and diversity metrics.
+Covers popularity bias (Gini), position bias, demographic parity, and an
+aggregate fairness report across protected user groups.
 """
 
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
-from dataclasses import dataclass
-from typing import Any
+from collections import Counter, defaultdict
+from typing import Any, Sequence
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class BiasMetrics:
-    """Comprehensive bias and fairness metrics."""
+class BiasDetector:
+    """Detect and quantify bias in recommendation outputs."""
+
+    # ------------------------------------------------------------------ #
     # Popularity bias
-    gini_coefficient: float = 0.0
-    popularity_bias_ratio: float = 0.0
-    long_tail_coverage: float = 0.0
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def gini_coefficient(values: Sequence[float]) -> float:
+        """Gini coefficient in [0, 1]; 0 = perfectly equal, 1 = maximally concentrated."""
+        arr = np.sort(np.asarray(list(values), dtype=float))
+        if arr.size == 0 or arr.sum() <= 0:
+            return 0.0
+        n = arr.size
+        index = np.arange(1, n + 1)
+        return float((2.0 * np.sum(index * arr)) / (n * np.sum(arr)) - (n + 1.0) / n)
 
-    # Fairness metrics
-    demographic_parity: float = 0.0
-    equal_opportunity: float = 0.0
-    calibration_score: float = 0.0
-
-    # Diversity metrics
-    intra_list_diversity: float = 0.0
-    average_similarity: float = 0.0
-    coverage: float = 0.0
-    novelty: float = 0.0
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "gini_coefficient": self.gini_coefficient,
-            "popularity_bias_ratio": self.popularity_bias_ratio,
-            "long_tail_coverage": self.long_tail_coverage,
-            "demographic_parity": self.demographic_parity,
-            "equal_opportunity": self.equal_opportunity,
-            "calibration_score": self.calibration_score,
-            "intra_list_diversity": self.intra_list_diversity,
-            "average_similarity": self.average_similarity,
-            "coverage": self.coverage,
-            "novelty": self.novelty,
-        }
-
-
-class PopularityBiasAnalyzer:
-    """Analyzes popularity bias in recommendations."""
-
-    def __init__(self, popularity_threshold_percentile: float = 80):
-        self.popularity_threshold_percentile = popularity_threshold_percentile
-
-    def compute_gini_coefficient(
+    def popularity_bias(
         self,
-        item_popularity: dict[int, int],
-    ) -> float:
-        """Compute Gini coefficient for item popularity distribution.
+        recommendations: Sequence[Sequence[Any]],
+        item_popularity: dict[Any, float] | None = None,
+    ) -> dict[str, float]:
+        """Measure how concentrated recommended items are.
 
-        Gini = 0 means perfect equality (all items equally popular)
-        Gini = 1 means perfect inequality (one item gets all interactions)
+        ``item_popularity`` maps item_id -> popularity score. When omitted,
+        popularity is estimated from the recommendations themselves.
+        Returns the Gini coefficient of recommended-item popularity plus
+        catalog coverage.
         """
-        if not item_popularity:
+        flat = [item for recs in recommendations for item in recs]
+        if not flat:
+            return {"gini_coefficient": 0.0, "coverage": 0.0, "unique_items": 0.0}
+
+        counts: Counter[Any] = Counter(flat)
+        if item_popularity:
+            pop_values = [float(item_popularity.get(item, 0.0)) for item in flat]
+            total_catalog = max(len(item_popularity), len(counts))
+        else:
+            pop_values = [float(c) for c in counts.values()]
+            total_catalog = len(counts)
+
+        gini = self.gini_coefficient(pop_values)
+        coverage = len(counts) / total_catalog if total_catalog else 0.0
+        result = {
+            "gini_coefficient": gini,
+            "coverage": float(coverage),
+            "unique_items": float(len(counts)),
+        }
+        logger.info("Popularity bias: gini=%.3f coverage=%.3f", gini, coverage)
+        return result
+
+    # ------------------------------------------------------------------ #
+    # Position bias
+    # ------------------------------------------------------------------ #
+    def position_bias(self, clicks_by_position: dict[int | str, int]) -> float:
+        """Positional unfairness: normalized spread of CTR-like attention.
+
+        ``clicks_by_position`` maps position -> click count. Returns a value
+        in [0, 1] where 1 means clicks are maximally concentrated on early
+        positions (strong position bias) and 0 means uniform distribution.
+        """
+        if not clicks_by_position:
+            return 0.0
+        positions = sorted(clicks_by_position.keys(), key=lambda p: int(p))
+        values = np.asarray([float(clicks_by_position[p]) for p in positions], dtype=float)
+        total = values.sum()
+        if total <= 0 or len(values) < 2:
             return 0.0
 
-        values = sorted(item_popularity.values())
+        observed = values / total
         n = len(values)
-        if n == 0:
-            return 0.0
+        uniform = np.full(n, 1.0 / n)
+        # Distance between observed attention and uniform attention,
+        # normalized to [0, 1] by its theoretical maximum.
+        raw = float(np.abs(observed - uniform).sum()) / 2.0
+        max_raw = 1.0 - 1.0 / n
+        unfairness = raw / max_raw if max_raw > 0 else 0.0
 
-        cumulative = np.cumsum(values)
-        gini = 1 - 2 * np.sum(cumulative) / (n * cumulative[-1]) + 1 / n
-        return float(gini)
-
-    def compute_popularity_bias_ratio(
-        self,
-        recommended_items: list[int],
-        item_popularity: dict[int, int],
-    ) -> float:
-        """Compute ratio of popular items in recommendations.
-
-        Returns fraction of recommendations that are popular items.
-        """
-        if not recommended_items or not item_popularity:
-            return 0.0
-
-        popularity_values = list(item_popularity.values())
-        threshold = np.percentile(popularity_values, self.popularity_threshold_percentile)
-
-        popular_count = sum(
-            1 for item in recommended_items
-            if item_popularity.get(item, 0) >= threshold
+        # Monotonicity bonus: penalize when earlier positions dominate later ones.
+        decay_violations = sum(
+            1 for i in range(n - 1) if observed[i] < observed[i + 1]
         )
+        monotonicity_penalty = decay_violations / (n - 1)
+        return float(np.clip(0.5 * unfairness + 0.5 * monotonicity_penalty, 0.0, 1.0))
 
-        return popular_count / len(recommended_items)
+    # ------------------------------------------------------------------ #
+    # Group fairness
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def demographic_parity(predictions_by_group: dict[Any, Sequence[float]]) -> float:
+        """Ratio of min/max positive-prediction rates across groups.
 
-    def compute_long_tail_coverage(
-        self,
-        recommended_items: list[int],
-        item_popularity: dict[int, int],
-    ) -> float:
-        """Compute fraction of long-tail items in recommendations."""
-        if not recommended_items or not item_popularity:
-            return 0.0
-
-        popularity_values = list(item_popularity.values())
-        threshold = np.percentile(popularity_values, self.popularity_threshold_percentile)
-
-        long_tail_count = sum(
-            1 for item in recommended_items
-            if item_popularity.get(item, 0) < threshold
-        )
-
-        return long_tail_count / len(recommended_items)
-
-
-class FairnessAnalyzer:
-    """Analyzes fairness across user groups."""
-
-    def __init__(self):
-        pass
-
-    def compute_demographic_parity(
-        self,
-        recommendations: dict[str, list[int]],
-        user_groups: dict[str, str],
-        item_scores: dict[int, float],
-    ) -> float:
-        """Compute demographic parity across user groups.
-
-        Measures if different user groups receive similar recommendation quality.
+        A value of 1.0 indicates perfect parity; common thresholds treat
+        >= 0.8 as acceptable (the "four-fifths rule").
         """
-        group_scores: dict[str, list[float]] = defaultdict(list)
-
-        for user_id, recs in recommendations.items():
-            group = user_groups.get(user_id, "unknown")
-            avg_score = np.mean([item_scores.get(item, 0) for item in recs]) if recs else 0
-            group_scores[group].append(avg_score)
-
-        if len(group_scores) < 2:
-            return 1.0  # Perfect parity with one group
-
-        group_means = {g: np.mean(scores) for g, scores in group_scores.items()}
-        max_mean = max(group_means.values())
-        min_mean = min(group_means.values())
-
-        if max_mean == 0:
-            return 1.0
-
-        return min_mean / max_mean
-
-    def compute_equal_opportunity(
-        self,
-        relevant_items: dict[str, set[int]],
-        recommendations: dict[str, list[int]],
-        user_groups: dict[str, str],
-    ) -> float:
-        """Compute equal opportunity across user groups.
-
-        Measures if different user groups have similar true positive rates.
-        """
-        group_tpr: dict[str, list[float]] = defaultdict(list)
-
-        for user_id, recs in recommendations.items():
-            relevant = relevant_items.get(user_id, set())
-            if not relevant:
+        rates: list[float] = []
+        for preds in predictions_by_group.values():
+            arr = np.asarray(list(preds), dtype=float)
+            if arr.size == 0:
                 continue
-
-            group = user_groups.get(user_id, "unknown")
-            hits = len(set(recs) & relevant)
-            tpr = hits / len(relevant) if relevant else 0
-            group_tpr[group].append(tpr)
-
-        if len(group_tpr) < 2:
+            rates.append(float((arr > 0).mean()))
+        if len(rates) < 2:
             return 1.0
-
-        group_means = {g: np.mean(tprs) for g, tprs in group_tpr.items()}
-        max_mean = max(group_means.values())
-        min_mean = min(group_means.values())
-
-        if max_mean == 0:
+        max_rate, min_rate = max(rates), min(rates)
+        if max_rate == 0:
             return 1.0
+        return float(min_rate / max_rate)
 
-        return min_mean / max_mean
-
-    def compute_calibration_score(
+    def equal_opportunity(
         self,
-        predicted_scores: dict[str, list[float]],
-        actual_outcomes: dict[str, list[float]],
+        predictions_by_group: dict[Any, Sequence[float]],
+        labels_by_group: dict[Any, Sequence[float]],
     ) -> float:
-        """Compute calibration score across user groups.
-
-        Measures if predicted scores match actual outcomes for each group.
-        """
-        calibration_scores = []
-
-        for group in predicted_scores:
-            if group not in actual_outcomes:
+        """Ratio of min/max true-positive rates across groups."""
+        tprs: list[float] = []
+        for group, preds in predictions_by_group.items():
+            y_pred = np.asarray(list(preds), dtype=float) > 0
+            y_true = np.asarray(list(labels_by_group.get(group, [])), dtype=float) > 0
+            positives = y_true.sum()
+            if positives == 0:
                 continue
-
-            pred_mean = np.mean(predicted_scores[group])
-            actual_mean = np.mean(actual_outcomes[group])
-
-            calibration_scores.append(abs(pred_mean - actual_mean))
-
-        if not calibration_scores:
+            tprs.append(float((y_pred & y_true).sum() / positives))
+        if len(tprs) < 2:
             return 1.0
+        return float(min(tprs) / max(tprs)) if max(tprs) > 0 else 1.0
 
-        return 1.0 - np.mean(calibration_scores)
-
-
-class DiversityAnalyzer:
-    """Analyzes diversity of recommendations."""
-
-    def __init__(self, item_embeddings: dict[int, np.ndarray] | None = None):
-        self.item_embeddings = item_embeddings or {}
-
-    def compute_intra_list_diversity(
+    # ------------------------------------------------------------------ #
+    # Aggregate report
+    # ------------------------------------------------------------------ #
+    def compute_fairness_metrics(
         self,
-        recommendations: list[int],
-    ) -> float:
-        """Compute intra-list diversity (average pairwise distance)."""
-        if len(recommendations) < 2:
-            return 0.0
+        recommendations: Sequence[Sequence[Any]],
+        protected_groups: dict[Any, str],
+        item_popularity: dict[Any, float] | None = None,
+        relevance_by_user: dict[Any, Sequence[float]] | None = None,
+    ) -> dict[str, Any]:
+        """Aggregate fairness report across user groups.
 
-        embeddings = [
-            self.item_embeddings[item]
-            for item in recommendations
-            if item in self.item_embeddings
-        ]
-
-        if len(embeddings) < 2:
-            return 0.0
-
-        embeddings = np.array(embeddings)
-        n = len(embeddings)
-
-        # Compute pairwise cosine distances
-        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-        normalized = embeddings / (norms + 1e-10)
-        similarity_matrix = np.dot(normalized, normalized.T)
-
-        # Average pairwise distance
-        total_distance = 0
-        count = 0
-        for i in range(n):
-            for j in range(i + 1, n):
-                total_distance += 1 - similarity_matrix[i, j]
-                count += 1
-
-        return total_distance / count if count > 0 else 0.0
-
-    def compute_coverage(
-        self,
-        all_recommendations: list[list[int]],
-        total_items: int,
-    ) -> float:
-        """Compute catalog coverage."""
-        recommended_items = set()
-        for recs in all_recommendations:
-            recommended_items.update(recs)
-
-        return len(recommended_items) / total_items if total_items > 0 else 0.0
-
-    def compute_novelty(
-        self,
-        recommendations: list[int],
-        item_popularity: dict[int, int],
-    ) -> float:
-        """Compute average novelty of recommendations.
-
-        Novelty = -log2(popularity) where popularity is fraction of users
-        who interacted with the item.
+        ``protected_groups`` maps user_id -> group label; positions in
+        ``recommendations`` correspond to users via enumeration order.
         """
-        if not recommendations:
-            return 0.0
+        group_recs: dict[str, list[list[Any]]] = defaultdict(list)
+        for idx, recs in enumerate(recommendations):
+            group = protected_groups.get(idx, "unknown")
+            group_recs[group].append(list(recs))
 
-        total_users = sum(item_popularity.values()) if item_popularity else 1
-
-        novelties = []
-        for item in recommendations:
-            pop = item_popularity.get(item, 0) / total_users if total_users > 0 else 0
-            if pop > 0:
-                novelty = -np.log2(pop)
-            else:
-                novelty = np.log2(total_users)  # Max novelty for unseen items
-            novelties.append(novelty)
-
-        return float(np.mean(novelties))
-
-
-class BiasFairnessEvaluator:
-    """Comprehensive bias and fairness evaluator."""
-
-    def __init__(
-        self,
-        item_popularity: dict[int, int] | None = None,
-        item_embeddings: dict[int, np.ndarray] | None = None,
-    ):
-        self.item_popularity = item_popularity or {}
-        self.item_embeddings = item_embeddings or {}
-
-        self.popularity_analyzer = PopularityBiasAnalyzer()
-        self.fairness_analyzer = FairnessAnalyzer()
-        self.diversity_analyzer = DiversityAnalyzer(item_embeddings)
-
-    def evaluate(
-        self,
-        all_recommendations: list[list[int]],
-        user_recommendations: dict[str, list[int]] | None = None,
-        user_groups: dict[str, str] | None = None,
-        relevant_items: dict[str, set[int]] | None = None,
-        item_scores: dict[int, float] | None = None,
-        total_items: int = 62000,
-    ) -> BiasMetrics:
-        """Run comprehensive bias and fairness evaluation."""
-        metrics = BiasMetrics()
-
-        # Flatten recommendations for popularity analysis
-        flat_recs = [item for recs in all_recommendations for item in recs]
-
-        # Popularity bias
-        metrics.gini_coefficient = self.popularity_analyzer.compute_gini_coefficient(
-            self.item_popularity
-        )
-        metrics.popularity_bias_ratio = self.popularity_analyzer.compute_popularity_bias_ratio(
-            flat_recs, self.item_popularity
-        )
-        metrics.long_tail_coverage = self.popularity_analyzer.compute_long_tail_coverage(
-            flat_recs, self.item_popularity
-        )
-
-        # Fairness (if user groups provided)
-        if user_recommendations and user_groups and item_scores:
-            metrics.demographic_parity = self.fairness_analyzer.compute_demographic_parity(
-                user_recommendations, user_groups, item_scores
-            )
-        if user_recommendations and user_groups and relevant_items:
-            metrics.equal_opportunity = self.fairness_analyzer.compute_equal_opportunity(
-                relevant_items, user_recommendations, user_groups
-            )
-
-        # Diversity
-        if all_recommendations:
-            ild_scores = [
-                self.diversity_analyzer.compute_intra_list_diversity(recs)
-                for recs in all_recommendations
-                if len(recs) >= 2
-            ]
-            metrics.intra_list_diversity = float(np.mean(ild_scores)) if ild_scores else 0.0
-
-        metrics.coverage = self.diversity_analyzer.compute_coverage(
-            all_recommendations, total_items
-        )
-        metrics.novelty = self.diversity_analyzer.compute_novelty(
-            flat_recs, self.item_popularity
-        )
-
-        return metrics
-
-    def generate_report(self, metrics: BiasMetrics) -> dict[str, Any]:
-        """Generate a bias/fairness report with interpretations."""
-        interpretations = {}
-
-        # Gini interpretation
-        if metrics.gini_coefficient < 0.3:
-            interpretations["gini"] = "Low inequality - recommendations are well distributed"
-        elif metrics.gini_coefficient < 0.6:
-            interpretations["gini"] = "Moderate inequality - some items dominate"
-        else:
-            interpretations["gini"] = "High inequality - strong popularity bias"
-
-        # Coverage interpretation
-        if metrics.coverage > 0.3:
-            interpretations["coverage"] = "Good catalog coverage"
-        elif metrics.coverage > 0.1:
-            interpretations["coverage"] = "Moderate catalog coverage"
-        else:
-            interpretations["coverage"] = "Low catalog coverage - consider diversity boost"
-
-        # Diversity interpretation
-        if metrics.intra_list_diversity > 0.5:
-            interpretations["diversity"] = "High diversity - recommendations are varied"
-        elif metrics.intra_list_diversity > 0.3:
-            interpretations["diversity"] = "Moderate diversity"
-        else:
-            interpretations["diversity"] = "Low diversity - recommendations are too similar"
-
-        return {
-            "metrics": metrics.to_dict(),
-            "interpretations": interpretations,
-            "recommendations": self._generate_recommendations(metrics),
+        # Per-group exposure: share of recommendation slots each group receives.
+        total_slots = sum(len(r) for r in recommendations) or 1
+        exposure = {
+            group: sum(len(r) for r in recs) / total_slots
+            for group, recs in group_recs.items()
         }
 
-    def _generate_recommendations(self, metrics: BiasMetrics) -> list[str]:
-        """Generate actionable recommendations."""
-        recommendations = []
+        parity_ratio = (
+            min(exposure.values()) / max(exposure.values())
+            if exposure and max(exposure.values()) > 0
+            else 1.0
+        )
 
-        if metrics.gini_coefficient > 0.6:
-            recommendations.append(
-                "Apply popularity penalty or diversity re-ranking to reduce inequality"
+        # Per-group accuracy (precision proxy) when relevance labels supplied.
+        group_precision: dict[str, float] = {}
+        if relevance_by_user:
+            for group, recs_list in group_recs.items():
+                precisions = []
+                for i, recs in enumerate(recs_list):
+                    user_idx = [
+                        j for j, g in enumerate(
+                            [protected_groups.get(k, "unknown") for k in range(len(recommendations))]
+                        ) if g == group
+                    ]
+                    if i < len(user_idx):
+                        labels = relevance_by_user.get(user_idx[i])
+                        if labels:
+                            lab = np.asarray(list(labels), dtype=float)[: len(recs)]
+                            if lab.size:
+                                precisions.append(float((lab > 0).mean()))
+                group_precision[group] = float(np.mean(precisions)) if precisions else 0.0
+
+        pop_bias = self.popularity_bias(recommendations, item_popularity)
+
+        report: dict[str, Any] = {
+            "group_exposure": exposure,
+            "exposure_parity_ratio": float(parity_ratio),
+            "demographic_parity": parity_ratio,
+            "popularity_bias": pop_bias,
+            "n_groups": len(group_recs),
+            "fair": bool(parity_ratio >= 0.8 and pop_bias["gini_coefficient"] < 0.8),
+        }
+        if group_precision:
+            prec_values = list(group_precision.values())
+            report["group_precision"] = group_precision
+            report["equalized_accuracy_ratio"] = (
+                min(prec_values) / max(prec_values) if max(prec_values) > 0 else 1.0
             )
-
-        if metrics.long_tail_coverage < 0.2:
-            recommendations.append(
-                "Increase exploration to expose long-tail items"
-            )
-
-        if metrics.intra_list_diversity < 0.3:
-            recommendations.append(
-                "Apply MMR (Maximal Marginal Relevance) to increase list diversity"
-            )
-
-        if metrics.coverage < 0.1:
-            recommendations.append(
-                "Implement exploration strategies to improve catalog coverage"
-            )
-
-        return recommendations
+        logger.info("Fairness report: parity=%.3f fair=%s", parity_ratio, report["fair"])
+        return report

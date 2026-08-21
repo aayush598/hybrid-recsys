@@ -1,0 +1,143 @@
+# Prometheus alert rules for the recommendation system.
+# Metric names follow backend/app/middleware/monitoring.py (beautyrec_ prefix)
+# and backend/app/core/model_monitoring.py (drift / funnel gauges).
+
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(beautyrec_errors_total[5m]))
+            /
+            clamp_min(sum(rate(beautyrec_http_requests_total[5m])), 1e-9)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: recommendations
+          category: api
+        annotations:
+          summary: "High HTTP error rate (>5%)"
+          description: >-
+            Error rate is {{ $value | humanizePercentage }} over the last 5 minutes,
+            above the 5% threshold. Recommendation API availability SLO is at risk.
+          runbook_url: "https://wiki.internal/runbooks/recommendations-high-error-rate"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(beautyrec_http_request_duration_seconds_bucket[5m]))
+          ) > 2
+        for: 10m
+        labels:
+          severity: warning
+          team: recommendations
+          category: api
+        annotations:
+          summary: "High p95 request latency (>2s)"
+          description: >-
+            p95 HTTP latency is {{ $value | humanizeDuration }} over the last 5 minutes,
+            exceeding the 2 second threshold for 10 minutes.
+          runbook_url: "https://wiki.internal/runbooks/recommendations-high-latency"
+
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            sum(rate(beautyrec_cache_hits_total[5m]))
+            /
+            clamp_min(sum(rate(beautyrec_recommendations_total[5m])), 1e-9)
+          ) < 0.5
+        for: 15m
+        labels:
+          severity: warning
+          team: recommendations
+          category: performance
+        annotations:
+          summary: "Low recommendation cache hit rate (<50%)"
+          description: >-
+            Only {{ $value | humanizePercentage }} of recommendation generations were
+            served from cache in the last 5 minutes. Backend load and tail latency will rise.
+          runbook_url: "https://wiki.internal/runbooks/recommendations-low-cache-hit-rate"
+
+  - name: model_alerts
+    interval: 1m
+    rules:
+      - alert: ModelDriftDetected
+        expr: beautyrec_model_drift_psi > 0.25
+        for: 10m
+        labels:
+          severity: warning
+          team: ml
+          category: model
+        annotations:
+          summary: "Model input/prediction drift detected (PSI > 0.25)"
+          description: >-
+            Population Stability Index for feature {{ $labels.feature }} is
+            {{ $value | humanize }} (threshold 0.25) for 10 minutes.
+            The recommendation model may be serving stale patterns; consider retraining.
+          runbook_url: "https://wiki.internal/runbooks/model-drift"
+
+      - alert: ModelPredictionDistributionShift
+        expr: beautyrec_model_drift_ks_pvalue < 0.01
+        for: 15m
+        labels:
+          severity: info
+          team: ml
+          category: model
+        annotations:
+          summary: "Prediction score distribution shifted (KS p < 0.01)"
+          description: >-
+            The KS test rejects the hypothesis that current prediction scores follow
+            the baseline distribution (p = {{ $value }}). Investigate recent data changes.
+
+  - name: infrastructure_alerts
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+          ) * 100 > 90
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          category: infrastructure
+        annotations:
+          summary: "Host memory usage above 90%"
+          description: >-
+            Memory usage on {{ $labels.instance }} is at
+            {{ $value | printf "%.1f" }}% for more than 5 minutes. Risk of OOM kills
+            for the recommendation service.
+          runbook_url: "https://wiki.internal/runbooks/high-memory-usage"
+
+      - alert: HighCpuUsage
+        expr: |
+          100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 85
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+          category: infrastructure
+        annotations:
+          summary: "Host CPU usage above 85%"
+          description: >-
+            CPU usage on {{ $labels.instance }} has been above 85% for 10 minutes.
+            Scale replicas or investigate hot loops.
+
+      - alert: ServiceDown
+        expr: up{job="beautyrec-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          category: infrastructure
+        annotations:
+          summary: "Recommendation backend is down"
+          description: >-
+            Prometheus has been unable to scrape {{ $labels.job }} on
+            {{ $labels.instance }} for 2 minutes.
+          runbook_url: "https://wiki.internal/runbooks/service-down"
