@@ -52,22 +52,22 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-16 pb-16">
-      <section className="pt-12 pb-4">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium">
+      <section className="pt-16 pb-4">
+        <div className="max-w-2xl mx-auto text-center space-y-5">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-100 border border-border text-secondary text-xs font-medium">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
             </svg>
             Orbo.ai BeautyGPT Use Case
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight leading-tight">
             Hybrid Recommendation Engine
           </h1>
-          <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
-            Collaborative filtering + content-based analysis + hybrid ensemble.
+          <p className="text-base text-secondary leading-relaxed max-w-xl mx-auto">
+            Collaborative filtering, content-based analysis, and hybrid ensemble.
             9,786 movies, 100K+ ratings, personalized for every user.
           </p>
-          <div className="max-w-xl mx-auto">
+          <div className="max-w-lg mx-auto">
             <SearchBar placeholder="Search for movies to get recommendations..." size="large" />
           </div>
         </div>
@@ -85,9 +85,9 @@ export default async function HomePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="section-title">Recommended for You</h2>
-            <p className="text-xs text-slate-500 mt-1">Hybrid ensemble based on your viewing history</p>
+            <p className="text-xs text-muted mt-1">Hybrid ensemble based on your viewing history</p>
           </div>
-          <Link href="/movies" className="text-sm text-accent hover:text-accent-hover transition-colors">
+          <Link href="/movies" className="text-sm text-secondary hover:text-primary transition-colors font-medium">
             View All
           </Link>
         </div>
@@ -98,9 +98,9 @@ export default async function HomePage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="section-title">Trending Now</h2>
-            <p className="text-xs text-slate-500 mt-1">Popular across all users</p>
+            <p className="text-xs text-muted mt-1">Popular across all users</p>
           </div>
-          <Link href="/trending" className="text-sm text-accent hover:text-accent-hover transition-colors">
+          <Link href="/trending" className="text-sm text-secondary hover:text-primary transition-colors font-medium">
             View All
           </Link>
         </div>

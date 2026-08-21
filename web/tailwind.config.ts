@@ -22,46 +22,25 @@ const config: Config = {
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       colors: {
-        surface: {
-          0: "#0a0a0f",
-          1: "#111118",
-          2: "#1a1a24",
-          3: "#22222e",
-          4: "#2a2a38",
-        },
+        primary: "#171717",
+        secondary: "#525252",
+        muted: "#a3a3a3",
+        border: "#e5e5e5",
+        bg: "#fafafa",
+        card: "#ffffff",
         accent: {
-          DEFAULT: "#3b82f6",
-          hover: "#2563eb",
-          subtle: "#1e3a5f",
+          DEFAULT: "#171717",
+          hover: "#404040",
         },
-        success: "#10b981",
-        warning: "#f59e0b",
-        danger: "#ef4444",
+        success: "#16a34a",
+        warning: "#ca8a04",
+        danger: "#dc2626",
       },
       fontSize: {
         "2xs": ["0.625rem", { lineHeight: "0.875rem" }],
       },
       borderRadius: {
         "4xl": "2rem",
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease-out",
-        "slide-up": "slideUp 0.5s ease-out",
-        "pulse-subtle": "pulseSubtle 2s ease-in-out infinite",
-      },
-      keyframes: {
-        fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
-        },
-        slideUp: {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        pulseSubtle: {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.7" },
-        },
       },
     },
   },

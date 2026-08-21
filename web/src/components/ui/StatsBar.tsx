@@ -22,21 +22,23 @@ export default function StatsBar() {
   if (!health) return null;
 
   const stats = [
-    { label: "Movies", value: health.movie_count.toLocaleString(), icon: "film" },
-    { label: "Ratings", value: health.rating_count.toLocaleString(), icon: "star" },
-    { label: "Users", value: health.user_count.toLocaleString(), icon: "users" },
-    { label: "Status", value: health.status === "healthy" ? "Online" : "Degraded", icon: "check" },
+    { label: "Movies", value: health.movie_count.toLocaleString() },
+    { label: "Ratings", value: health.rating_count.toLocaleString() },
+    { label: "Users", value: health.user_count.toLocaleString() },
+    { label: "Status", value: health.status === "healthy" ? "Online" : "Degraded", isStatus: true },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {stats.map((stat) => (
         <div key={stat.label} className="stat-card">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${stat.label === "Status" ? (stat.value === "Online" ? "bg-success" : "bg-warning") : "bg-accent/40"}`} />
-            <span className="stat-label">{stat.label}</span>
-          </div>
-          <span className="stat-value text-xl">{stat.value}</span>
+          <span className="stat-label">{stat.label}</span>
+          <span className="stat-value text-xl">
+            {stat.isStatus && (
+              <span className={`inline-block w-2 h-2 rounded-full mr-2 ${stat.value === "Online" ? "bg-green-500" : "bg-amber-500"}`} />
+            )}
+            {stat.value}
+          </span>
         </div>
       ))}
     </div>

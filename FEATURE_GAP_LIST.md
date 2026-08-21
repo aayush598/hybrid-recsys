@@ -2,6 +2,12 @@
 # Every feature that needs to be added, fixed, or connected
 # Generated: 2026-08-21
 # Source: 306 knowledge base files cross-referenced with codebase
+#
+# NOTE: This document is HISTORICAL. The project has been restructured:
+# - Renamed from BeautyRec to Hybrid RecSys
+# - Frontend rebuilt as Next.js 14 full-stack app (web/ directory)
+# - Backend is now Python ML pipeline only (backend/ directory)
+# - See README.md for current architecture
 
 ---
 

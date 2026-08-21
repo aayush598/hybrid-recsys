@@ -43,7 +43,7 @@ export default async function MoviesPage({
           <h1 className="page-title">
             {query ? "Search Results" : genre ? genre : "Explore Movies"}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-muted mt-1">
             {data.total.toLocaleString()} movies
             {query && <> matching &ldquo;{query}&rdquo;</>}
           </p>
@@ -81,7 +81,7 @@ export default async function MoviesPage({
               Previous
             </a>
           )}
-          <span className="text-sm text-slate-500 px-3">
+          <span className="text-sm text-muted px-3">
             Page {page} of {data.total_pages}
           </span>
           {page < data.total_pages && (

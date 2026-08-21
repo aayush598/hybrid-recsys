@@ -20,14 +20,11 @@ export default function RatingWidget({
     if (submitting) return;
     setSubmitting(true);
     try {
-      const res = await fetch(
-        `/api/recommendations/user/${userId}/rate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ movie_id: movieId, rating: value }),
-        }
-      );
+      const res = await fetch(`/api/recommendations/user/${userId}/rate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ movie_id: movieId, rating: value }),
+      });
       if (res.ok) {
         setRating(value);
         setSubmitted(true);
@@ -40,7 +37,7 @@ export default function RatingWidget({
 
   if (submitted) {
     return (
-      <div className="flex items-center gap-2 text-success">
+      <div className="flex items-center gap-2 text-green-600">
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -64,9 +61,7 @@ export default function RatingWidget({
           >
             <svg
               className={`w-6 h-6 transition-colors ${
-                star <= (hovered || rating)
-                  ? "text-warning"
-                  : "text-surface-4 hover:text-surface-3"
+                star <= (hovered || rating) ? "text-amber-400" : "text-neutral-300 hover:text-neutral-400"
               }`}
               fill="currentColor"
               viewBox="0 0 20 20"
@@ -76,7 +71,7 @@ export default function RatingWidget({
           </button>
         ))}
       </div>
-      <span className="text-xs text-slate-500">
+      <span className="text-xs text-muted">
         {hovered > 0 ? `${hovered}/5` : "Rate this"}
       </span>
     </div>

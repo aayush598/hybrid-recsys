@@ -37,8 +37,8 @@ export default function LikeButton({
       disabled={submitting}
       className={`btn btn-sm ${
         liked
-          ? "bg-accent/10 text-accent border border-accent/30"
-          : "bg-surface-3 text-slate-400 border border-surface-4 hover:text-white hover:border-surface-4"
+          ? "bg-primary text-white border border-primary"
+          : "bg-white text-secondary border border-border hover:border-neutral-300 hover:text-primary"
       }`}
     >
       <svg
