@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,12 +32,25 @@ def create_app() -> FastAPI:
     """
     setup_logging(settings.LOG_LEVEL)
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        global _models_loaded
+        logger.info("Starting BeautyRec application", version=settings.APP_VERSION)
+        await init_db()
+        _models_loaded = await _initialize_models()
+        _setup_default_experiments()
+        logger.info("Application startup complete", models_loaded=_models_loaded)
+        yield
+        logger.info("Shutting down BeautyRec application")
+        await close_db()
+
     app = FastAPI(
         title=settings.APP_NAME,
         version=settings.APP_VERSION,
         description="Production-grade hybrid recommendation system inspired by Netflix & Orbo.ai BeautyGPT",
         docs_url="/docs" if not settings.is_production else None,
         redoc_url="/redoc" if not settings.is_production else None,
+        lifespan=lifespan,
         openapi_tags=[
             {"name": "Health", "description": "System health and monitoring"},
             {"name": "Recommendations", "description": "AI-powered recommendation generation"},
@@ -86,21 +101,6 @@ def create_app() -> FastAPI:
     # A/B Test endpoints
     from app.api.v1.ab_testing import router as ab_router
     app.include_router(ab_router, prefix="/api/v1/experiments", tags=["A/B Testing"])
-
-    # Lifecycle events
-    @app.on_event("startup")
-    async def startup() -> None:
-        global _models_loaded
-        logger.info("Starting BeautyRec application", version=settings.APP_VERSION)
-        await init_db()
-        _models_loaded = await _initialize_models()
-        _setup_default_experiments()
-        logger.info("Application startup complete", models_loaded=_models_loaded)
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        logger.info("Shutting down BeautyRec application")
-        await close_db()
 
     return app
 

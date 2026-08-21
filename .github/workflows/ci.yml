@@ -41,7 +41,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - name: Install dependencies
-        run: pip install -e ".[ml,dev]"
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio pytest-cov
       - name: Unit tests
         run: pytest backend/tests/unit/ -v --tb=short --cov=backend/app --cov-report=xml
       - name: Integration tests
@@ -99,6 +101,6 @@ jobs:
       - name: Install safety
         run: pip install safety bandit
       - name: Check dependencies
-        run: safety check -r pyproject.toml || true
+        run: safety check -r backend/requirements.txt || true
       - name: Bandit security scan
         run: bandit -r backend/app -ll

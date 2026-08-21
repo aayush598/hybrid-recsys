@@ -7,7 +7,7 @@ clone to running app in ~15 minutes.
 
 | Tool | Version | Check |
 | --- | --- | --- |
-| Python | 3.12+ | `python --version` |
+| Python | 3.11+ | `python --version` |
 | Node.js | 20+ | `node --version` |
 | Docker + Compose | recent | `docker compose version` |
 | Make / bash | any | — |
@@ -21,7 +21,7 @@ git clone <repo-url> && cd recommendation_system
 
 # Python environment (or use your own venv manager)
 python -m venv .venv && source .venv/bin/activate
-pip install -e "backend[dev]"        # or: pip install -r backend/requirements.txt
+pip install -r backend/requirements.txt
 ```
 
 Configure environment:
@@ -83,7 +83,7 @@ docs/
 
 ```bash
 # Backend tests (SQLite, no services needed)
-pytest backend/tests -m "not slow"
+pytest backend/tests
 
 # Lint & format
 ruff check backend && ruff format --check backend
@@ -104,7 +104,7 @@ pre-commit install
 2. Add/adjust tests alongside your change; keep coverage stable.
 3. Run the test suite and linters locally.
 4. Open a PR — CI runs unit tests, integration tests, and lint.
-5. Migrations: use Alembic (`alembic revision --autogenerate`); ensure they
+5. Migrations: add new schema changes to `app/db/models.py` and ensure they
    apply cleanly to both SQLite and Postgres.
 
 ## 7. Deployments (overview)

@@ -1,3 +1,35 @@
+[project]
+name = "beautyrec"
+version = "1.0.0"
+description = "Production-grade hybrid recommendation system inspired by Netflix & Orbo.ai BeautyGPT"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+ml = [
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "implicit",
+    "faiss-cpu",
+    "lightgbm",
+    "torch",
+    "structlog",
+    "prometheus-client",
+]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
@@ -44,6 +76,9 @@ testpaths = ["backend/tests"]
 asyncio_mode = "auto"
 python_files = ["test_*.py"]
 addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests (deselect with -m 'not integration')",
+]
 
 [tool.coverage.run]
 source = ["backend/app", "backend/ml"]
