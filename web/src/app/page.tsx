@@ -1,7 +1,9 @@
 import MovieGrid from "@/components/movies/MovieGrid";
+import SearchBar from "@/components/ui/SearchBar";
+import StatsBar from "@/components/ui/StatsBar";
+import AlgorithmExplainer from "@/components/home/AlgorithmExplainer";
 import Link from "next/link";
 import { getHybridRecommendations, getMovieById, getTrending } from "@/lib/models";
-import { prisma } from "@/lib/db";
 
 async function getRecommendations() {
   try {
@@ -42,42 +44,51 @@ async function getTrendingData() {
   }
 }
 
-async function getHealth() {
-  try {
-    const movieCount = await prisma.movie.count();
-    const ratingCount = await prisma.rating.count();
-    return { movie_count: movieCount, rating_count: ratingCount };
-  } catch {
-    return null;
-  }
-}
-
 export default async function HomePage() {
-  const [recs, trending, health] = await Promise.all([getRecommendations(), getTrendingData(), getHealth()]);
+  const [recs, trending] = await Promise.all([
+    getRecommendations(),
+    getTrendingData(),
+  ]);
 
   return (
-    <div className="space-y-12">
-      <section className="text-center py-12">
-        <h1 className="text-4xl font-bold mb-4">
-          <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
-            AI-Powered Movie Recommendations
-          </span>
-        </h1>
-        <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-          Hybrid collaborative filtering + content-based analysis delivering personalized recommendations.
-          {health && (
-            <span className="block mt-2 text-sm text-green-400">
-              System Online: {health.movie_count} movies | {health.rating_count} ratings
-            </span>
-          )}
-        </p>
+    <div className="space-y-16 pb-16">
+      <section className="pt-12 pb-4">
+        <div className="max-w-3xl mx-auto text-center space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 border border-accent/20 text-accent text-xs font-medium">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            Orbo.ai BeautyGPT Use Case
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight leading-tight">
+            Hybrid Recommendation Engine
+          </h1>
+          <p className="text-base text-slate-400 leading-relaxed max-w-2xl mx-auto">
+            Collaborative filtering + content-based analysis + hybrid ensemble.
+            9,786 movies, 100K+ ratings, personalized for every user.
+          </p>
+          <div className="max-w-xl mx-auto">
+            <SearchBar placeholder="Search for movies to get recommendations..." size="large" />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <StatsBar />
+      </section>
+
+      <section>
+        <AlgorithmExplainer />
       </section>
 
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Recommended for You</h2>
-          <Link href="/movies" className="text-purple-400 hover:text-purple-300 text-sm">
-            View All →
+          <div>
+            <h2 className="section-title">Recommended for You</h2>
+            <p className="text-xs text-slate-500 mt-1">Hybrid ensemble based on your viewing history</p>
+          </div>
+          <Link href="/movies" className="text-sm text-accent hover:text-accent-hover transition-colors">
+            View All
           </Link>
         </div>
         <MovieGrid movies={recs} />
@@ -85,9 +96,12 @@ export default async function HomePage() {
 
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Trending Now</h2>
-          <Link href="/trending" className="text-purple-400 hover:text-purple-300 text-sm">
-            View All →
+          <div>
+            <h2 className="section-title">Trending Now</h2>
+            <p className="text-xs text-slate-500 mt-1">Popular across all users</p>
+          </div>
+          <Link href="/trending" className="text-sm text-accent hover:text-accent-hover transition-colors">
+            View All
           </Link>
         </div>
         <MovieGrid movies={trending} />

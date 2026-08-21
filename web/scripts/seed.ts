@@ -62,7 +62,7 @@ async function main() {
   const userRecords = Array.from(userIds).map((uid) => ({
     id: `user-${uid}`,
     username: `user${uid}`,
-    email: `user${uid}@beautyrec.local`,
+    email: `user${uid}@hybrid-recsys.local`,
     hashedPassword: "not-a-real-hash",
     displayName: `User ${uid}`,
   }));

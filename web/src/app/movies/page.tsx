@@ -1,20 +1,17 @@
 import MovieGrid from "@/components/movies/MovieGrid";
+import SearchBar from "@/components/ui/SearchBar";
 import { getMovies as getAllMovies, getGenres as getAllGenres, searchMovies } from "@/lib/models";
 
 function getMoviesData(page: number = 1, genre?: string) {
   let movies = getAllMovies();
-
   if (genre) {
     movies = movies.filter((m) =>
       m.genres.split("|").map((g) => g.trim()).includes(genre)
     );
   }
-
   const total = movies.length;
   const start = (page - 1) * 30;
-  const paged = movies.slice(start, start + 30);
-
-  return { items: paged, total, total_pages: Math.ceil(total / 30) };
+  return { items: movies.slice(start, start + 30), total, total_pages: Math.ceil(total / 30) };
 }
 
 export default async function MoviesPage({
@@ -40,55 +37,57 @@ export default async function MoviesPage({
   const genres = getAllGenres();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">
-          {query ? `Search: "${query}"` : genre ? `${genre} Movies` : "Explore Movies"}
-        </h1>
-        <span className="text-gray-500">{data.total} movies</span>
+    <div className="space-y-6 pb-16">
+      <div className="space-y-4">
+        <div>
+          <h1 className="page-title">
+            {query ? "Search Results" : genre ? genre : "Explore Movies"}
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {data.total.toLocaleString()} movies
+            {query && <> matching &ldquo;{query}&rdquo;</>}
+          </p>
+        </div>
+        <SearchBar defaultValue={query || ""} placeholder="Search by title, genre, or keyword..." />
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <a
-          href="/movies"
-          className={`px-3 py-1 rounded-full text-sm ${
-            !genre ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-          }`}
-        >
+        <a href="/movies" className={!genre ? "genre-pill-active" : "genre-pill"}>
           All
         </a>
         {genres.map((g: string) => (
           <a
             key={g}
-            href={`/movies?genre=${encodeURIComponent(g)}`}
-            className={`px-3 py-1 rounded-full text-sm ${
-              genre === g ? "bg-purple-600 text-white" : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
+            href={`/movies?genre=${encodeURIComponent(g)}${query ? `&q=${query}` : ""}`}
+            className={genre === g ? "genre-pill-active" : "genre-pill"}
           >
             {g}
           </a>
         ))}
       </div>
 
-      <MovieGrid movies={data.items} />
+      <MovieGrid
+        movies={data.items}
+        emptyMessage={query ? `No movies found for "${query}"` : "No movies in this genre"}
+      />
 
       {data.total_pages > 1 && (
-        <div className="flex justify-center gap-2 mt-8">
+        <div className="flex items-center justify-center gap-2 pt-4">
           {page > 1 && (
             <a
               href={`/movies?page=${page - 1}${genre ? `&genre=${genre}` : ""}${query ? `&q=${query}` : ""}`}
-              className="px-4 py-2 bg-gray-800 rounded hover:bg-gray-700"
+              className="btn btn-secondary btn-sm"
             >
               Previous
             </a>
           )}
-          <span className="px-4 py-2 text-gray-500">
+          <span className="text-sm text-slate-500 px-3">
             Page {page} of {data.total_pages}
           </span>
           {page < data.total_pages && (
             <a
               href={`/movies?page=${page + 1}${genre ? `&genre=${genre}` : ""}${query ? `&q=${query}` : ""}`}
-              className="px-4 py-2 bg-gray-800 rounded hover:bg-gray-700"
+              className="btn btn-secondary btn-sm"
             >
               Next
             </a>
